@@ -18,7 +18,7 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('-m', '--MODE', required=True, choices=['prepro', 'train', 'train_gec', 'test', 'test_raw'])
+    parser.add_argument('-m', '--MODE', required=True, choices=['prepro', 'train', 'test', 'test_raw'])
     parser.add_argument('-d', '--data', required=True, choices=['essay', 'textbook'])
     parser.add_argument('-c', '--clf', default="nn", choices=["nn", "ll"])
     parser.add_argument('-g', '--visible_gpus', default=0, type=int)
