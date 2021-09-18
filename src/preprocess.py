@@ -35,6 +35,7 @@ def preprocess(args):
             grmitem = GrmItem(str(data))
             grm, pos_ngram, use_list = grmitem.features()
             inputs = Feature(ngram=ngram, pos_ngram=pos_ngram, grmitem=grm, word_difficulty=diff, stats=stats).concat()
+
             if 'A1' in dat:
                 x.append(inputs)
                 y.append(1)
@@ -47,8 +48,9 @@ def preprocess(args):
             elif 'B2' in dat:
                 x.append(inputs)
                 y.append(4)
-            # elif 'C1' in dat:
-            #    y.append(5)
+            elif 'C' in dat:
+                x.append(inputs)
+                y.append(5)
             # elif 'C2' in dat:
             #    y.append(6)
 
@@ -64,12 +66,14 @@ def preprocess(args):
             for i in range(len(shuf_list)):
                 shuf_list[i] = shuf_list[i].replace("original", "ori_statgec_pairs_xml")
                 shuf_list[i] = shuf_list[i].replace("raw", "out")
-        else:
+        elif args.gec == "nn":
             output_path = '../cefrj/train_nngec/'
             for i in range(len(shuf_list)):
                 shuf_list[i] = shuf_list[i].replace("original", "ori_nngec_pairs_xml")
-        x = []
-        y = []
+        elif args.gec == "correct":
+            output_path = '../cefrj/train_correct/'
+            for i in range(len(shuf_list)):
+                shuf_list[i] = shuf_list[i].replace("original", "ori_correct_pairs_xml")
 
         # 文法項目の読み込み
         grmlist = []  # TODO Grmitem以下にselfとして追加してあるんだけど別の場所で必要になってしまったため重複している
@@ -100,6 +104,8 @@ def preprocess(args):
         with open('../dat/treetagger_content.list', 'r') as f:
             for num, i in enumerate(f):
                 content_pos_dic[str(i.rstrip())] = str(num + 1)
+        x = []
+        y = []
 
         # xmlデータ読み込み（入力，出力，アライメント結果）
         for dat in shuf_list:
@@ -111,7 +117,7 @@ def preprocess(args):
             original_text = ''
             operation_features = []
             grmitem_features = []
-            for ori_sen, gec_sen, dp_sen in zip(original, gec_out, aligned):  # TODO alignedがないからどう変更できるか調べる
+            for ori_sen, gec_sen, dp_sen in zip(original, gec_out, aligned):
                 original_text += ori_sen.capitalize() + ' '
                 # 内容語品詞dic, 機能語単語dic, 機能語品詞リスト
                 operations = detect_operate_pos(ori_sen, gec_sen, dp_sen, content_pos_dic, function_word_dic,
@@ -125,38 +131,44 @@ def preprocess(args):
             # 頻度でまとめる
             operations_feat = dict(Counter(operation_features))
             grmitem_feat = dict(Counter(grmitem_features))
-
             # original文に対して行う
             surface = Surface(str(original_text))
             ngram, stats, diff = surface.features()
             grmitem = GrmItem(str(original_text))
             _, pos_ngram, use_list = grmitem.features()
+            # 文法項目のinput
             inputs = Feature_gec(ngram=ngram, pos_ngram=pos_ngram, grmitem=grmitem_feat, word_difficulty=diff,
                                  stats=stats, operations=operations_feat).concat()
 
-            x.append(inputs)
+            # ngram_inputs = inputs[:26591 + 7933]
+            # grm_gec_inputs = inputs[26591 + 7933:26591 + 7933 + 1002 + 732]
+            # diff_inputs = inputs[26591 + 7933 + 1002 + 732:]
+
             if 'A1' in dat:
+                x.append(inputs)
                 y.append(1)
             elif 'A2' in dat:
+                x.append(inputs)
                 y.append(2)
             elif 'B1' in dat:
+                x.append(inputs)
                 y.append(3)
 
     length = len(y)
     ratio = [0.8, 0.1, 0.1]
-    split = [math.floor(ratio[0] * length), math.floor((ratio[0] + ratio[1]) * length)]
+    splits = [math.floor(ratio[0] * length), math.floor((ratio[0] + ratio[1]) * length)]
 
     with open(output_path + "train.csv", "w") as train, open(output_path + "dev.csv", "w") as dev, open(
             output_path + "test.csv", "w") as test:
         for i in range(length):
-            if i < split[0]:
-                train.write(", ".join(list(map(str, x[i]))) + ", " + str(y[i]) + "\n")
-            elif i < split[1]:
-                dev.write(", ".join(list(map(str, x[i]))) + ", " + str(y[i]) + "\n")
+            if i < splits[0]:
+                train.write(",".join(list(map(str, x[i]))) + "," + str(y[i]) + "\n")
+            elif i < splits[1]:
+                dev.write(",".join(list(map(str, x[i]))) + "," + str(y[i]) + "\n")
             else:
-                test.write(", ".join(list(map(str, x[i]))) + ", " + str(y[i]) + "\n")
+                test.write(",".join(list(map(str, x[i]))) + "," + str(y[i]) + "\n")
 
     print("all size: (", length, ", ", len(x[0]), ")")
-    print("train size:", split[0])
-    print("dev size:", split[1] - split[0])
-    print("test size:", length - split[1])
+    print("train size:", splits[0])
+    print("dev size:", splits[1] - splits[0])
+    print("test size:", length - splits[1])

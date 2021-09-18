@@ -14,10 +14,12 @@ def test(args):
     y = []
     if args.data == "textbook":
         PATH = "../textbook/10_instance/train/"
-    elif args.gec == "stat":
-        PATH = '../cefrj/train_correct/'
     elif args.gec == "nn":
         PATH = '../cefrj/train_nngec/'
+    elif args.gec == "stat":
+        PATH = '../cefrj/train_statgec/'
+    elif args.gec == "correct":
+        PATH = '../cefrj/train_correct/'
     else:
         PATH = '../cefrj/train/'
 
@@ -33,7 +35,7 @@ def test(args):
     print("y.shape", y.shape)
     if args.clf == "nn":
         if args.data == "textbook":
-            split_num = 4
+            split_num = 5  # 4
         else:
             split_num = 3
 

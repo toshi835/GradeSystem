@@ -1,9 +1,9 @@
 import os
 import glob
 
-input_files = glob.glob('/home/lr/kawamoto/m1/GradeSystemForEssay/cefrj/original/A2/*.raw')
+input_files = glob.glob('/home/lr/kawamoto/m1/GradeSystemForEssay/cefrj/original/**/*.raw')
 input_files.sort()
-exist_lst = set(glob.glob("/home/lr/kawamoto/m1/GradeSystemForEssay/cefrj/nngec/A2/*.raw"))
+exist_lst = set(glob.glob("/home/lr/kawamoto/m1/GradeSystemForEssay/cefrj/nngec/**/*.raw"))
 
 os.chdir("/raid/zhang/GEC/gector")
 

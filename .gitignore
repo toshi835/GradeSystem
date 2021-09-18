@@ -1,0 +1,6 @@
+#ignore dictionary
+
+model/
+cefrj/
+incremental-top-down-parser/
+textbook/

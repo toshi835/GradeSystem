@@ -18,6 +18,8 @@ def train(args):
         PATH = '../cefrj/train_nngec/'
     elif args.gec == "stat":
         PATH = '../cefrj/train_statgec/'
+    elif args.gec == "correct":
+        PATH = '../cefrj/train_correct/'
     else:
         PATH = '../cefrj/train/'
 
@@ -46,7 +48,7 @@ def train(args):
     # 学習
     if args.clf == "nn":
         if args.data == "textbook":
-            split_num = 4
+            split_num = 5
         else:
             split_num = 3
         x_train = torch.from_numpy(x_train).float()
@@ -80,7 +82,7 @@ def train(args):
         optimizer = torch.optim.SGD(model.parameters(), lr=0.05)
 
         loss_history = []
-        for epoch in range(3000):
+        for epoch in range(args.epoch):
             train_loss = 0
             model.train()
             for batch in train_loader:

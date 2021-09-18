@@ -59,14 +59,6 @@ class Surface:
             _ngrams = [list(zip(*(sentence.split()[i:] for i in range(num)))) for sentence in self.prop_sentences]
             ngrams = [flat for inner in _ngrams for flat in inner]
             all_ngram.extend(set(ngrams))
-            '''
-            for k,v in sorted(Counter(ngrams).items(), key=lambda x: -x[1]):
-                if v < 5:
-                    pass
-                else:
-                    print(xx, k, v, sep='\t')
-                    xx += 1
-            '''
         return Counter(all_ngram)
 
     def word_difficulty(self):
@@ -220,6 +212,7 @@ class Feature:
             self.pos_dic[line.split('\t')[1]] = line.split('\t')[0]
 
     def ngram2vec(self):
+        # order: [ngram(26591), pos_ngram(7933), grm_item(501), word_difficulty(4)] -> 35029
         fdic = OrderedDict()
         # word ngram
         for feature in self.ngram:
@@ -243,13 +236,13 @@ class Feature:
         # word diff
         for number, feature in enumerate(self.word_difficulty, 0):
             # 501 is length of grm item
-            fdic[number + int(501) + len(self.pos_dic) + len(self.word_dic)] = feature
+            fdic[number + 501 + len(self.pos_dic) + len(self.word_dic)] = feature
 
         return fdic
 
     def concat(self):
         ngrams = self.ngram2vec()
-        vec_size = 4 + int(501) + len(self.pos_dic) + len(self.word_dic)
+        vec_size = 4 + 501 + len(self.pos_dic) + len(self.word_dic)
         inputs = np.zeros([1, vec_size])
 
         for k, v in ngrams.items():
@@ -286,6 +279,7 @@ class Feature_gec(Feature):
     # grmitemが誤り対応，操作
     def ngram2vec(self):
         fdic = OrderedDict()
+        # order: [ngram(26591), pos_ngram(7933), grm_item(501*2), operations(244*3), word_difficulty(4)] -> 36262
         # word ngram
         for feature in self.ngram:
             if str(feature) in self.word_dic:
@@ -306,21 +300,19 @@ class Feature_gec(Feature):
         for key, value in self.grmitem.items():
             fdic[int(key) - 1 + len(self.pos_dic) + len(self.word_dic)] = value / float(self.stats[1])
 
-        # 操作
+        # 誤り操作
         for key, value in self.operations.items():
-            # for x in self.operations:
             fdic[key - 1 + len(self.pos_dic) + len(self.word_dic) + 501 * 2] = value / float(self.stats[1])
 
         # word diff
-        for number, feature in enumerate(self.word_difficulty, 0):
-            # 501 is length of grm item
-            fdic[number + 501 * 2 + len(self.pos_dic) + len(self.word_dic) + 244 * 3] = feature
+        for number, feature in enumerate(self.word_difficulty):
+            fdic[number + len(self.pos_dic) + len(self.word_dic) + 501 * 2 + 244 * 3] = feature
 
         return fdic
 
     def concat(self):
         ngrams = self.ngram2vec()
-        vec_size = 4 + 501 * 2 + len(self.pos_dic) + len(self.word_dic) + 244 * 3
+        vec_size = len(self.pos_dic) + len(self.word_dic) + 501 * 2 + 244 * 3 + 4
         inputs = np.zeros([1, vec_size])
 
         for k, v in ngrams.items():

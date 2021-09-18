@@ -1,10 +1,10 @@
 import glob
 import os
 
-
 # 1, shape gec result
 files = glob.glob('/home/lr/kawamoto/m1/GradeSystemForEssay/cefrj/nngec/**/*.raw')
 files.sort()
+
 
 for file in files:
     print(1, file)
