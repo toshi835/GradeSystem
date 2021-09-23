@@ -1,50 +1,36 @@
 import torch
 import numpy as np
-from collections import Counter
 from sklearn.externals import joblib
 from sklearn.metrics import accuracy_score, confusion_matrix, f1_score
 
-from utils import Surface, GrmItem, Feature, output
+from prepro_utils import Surface, GrmItem, Feature
+from utils import show_output, data_loader
 from model import MLP
 
 
 def test(args):
     # データ読み込み
-    x = []
-    y = []
     if args.data == "textbook":
-        PATH = "../textbook/10_instance/train/"
-    elif args.gec == "nn":
-        PATH = '../cefrj/train_nngec/'
-    elif args.gec == "stat":
-        PATH = '../cefrj/train_statgec/'
+        PATH = "../textbook/train/"
+    elif args.gec in ["nn", "stat"]:
+        PATH = f'../essay/train_{args.gec}gec/'
     elif args.gec == "correct":
-        PATH = '../cefrj/train_correct/'
+        PATH = '../essay/train_correct/'
     else:
-        PATH = '../cefrj/train/'
+        PATH = '../essay/train/'
 
-    with open(PATH + "test.csv", "r") as f:
-        for line in f:
-            lines = list(map(float, line.split(",")))
-            x.append(np.array(lines[:-1]))
-            y.append(int(lines[-1]))
+    x, y = data_loader(PATH+"test.csv")
 
-    x = np.array(x)
-    y = np.array(y)
-    print("x.shape", x.shape)
-    print("y.shape", y.shape)
+    # mlp
     if args.clf == "nn":
-        if args.data == "textbook":
-            split_num = 5  # 4
-        else:
-            split_num = 3
+        split_num = max(y)
 
         x = torch.from_numpy(x).float()
         y = y - 1
         y = torch.from_numpy(y).float()
 
         model = MLP(args, x.shape[1], split_num)
-        model.load_state_dict(torch.load(args.out))
+        model.load_state_dict(torch.load(args.model))
         model.eval()
 
         output = model.forward(x)
@@ -55,25 +41,19 @@ def test(args):
             y_pred.append(np.argmax(output.data[i, :]))
         y_pred = torch.tensor(y_pred)
 
-        print()
-        print("accuracy: {0:.4f}".format(accuracy_score(y, y_pred)))
-        print("macro f1: {0:.4f}".format(f1_score(y, y_pred, average="macro")))
-        print("confusion matrix:")
-        print(confusion_matrix(y, y_pred))
-
+    # lr
     else:
-        # モデル読み込み
-        clf = joblib.load(args.out)
+        clf = joblib.load(args.model)
         y_pred = clf.predict(x)
 
-        print()
-        print("accuracy: {0:.4f}".format(accuracy_score(y, y_pred)))
-        print("macro f1: {0:.4f}".format(f1_score(y, y_pred, average="macro")))
-        print("confusion matrix:")
-        print(confusion_matrix(y, y_pred))
+    print()
+    print("accuracy: {0:.4f}".format(accuracy_score(y, y_pred)))
+    print("macro f1: {0:.4f}".format(f1_score(y, y_pred, average="macro")))
+    print("confusion matrix:")
+    print(confusion_matrix(y, y_pred))
 
 
-def test_raw(args):
+def test_raw(args):  # lr w/o GECのみ可能
     # データ読み込み
     data = ''
     with open(args.input, 'r') as f:
@@ -85,9 +65,10 @@ def test_raw(args):
     ngram, stats, diff = surface.features()
     grmitem = GrmItem(str(data))
     grm, pos_ngram, grm_freq = grmitem.features()
-    inputs = Feature(ngram=ngram, pos_ngram=pos_ngram, grmitem=grm, word_difficulty=diff, stats=stats).concat()
+    inputs = Feature(ngram=ngram, pos_ngram=pos_ngram,
+                     grmitem=grm, word_difficulty=diff, stats=stats).concat()
 
     # モデル読み込み
-    clf = joblib.load(args.out)
+    clf = joblib.load(args.model)
     grade = clf.predict(inputs)
-    print(output(grade, stats, diff, grm_freq))
+    print(show_output(grade, stats, diff, grm_freq))

@@ -1,56 +1,31 @@
 import mord
 import numpy as np
 import torch
-import torch.nn.functional as F
 from torch.utils.data import TensorDataset, DataLoader
 from sklearn.metrics import accuracy_score, confusion_matrix, f1_score
 from sklearn.externals import joblib
 
 from model import MLP, evaluate
+from utils import data_loader
 
 
 def train(args):
-    x_train = []
-    y_train = []
     if args.data == "textbook":
-        PATH = "../textbook/10_instance/train/"
-    elif args.gec == "nn":
-        PATH = '../cefrj/train_nngec/'
-    elif args.gec == "stat":
-        PATH = '../cefrj/train_statgec/'
+        PATH = "../textbook/train/"
+    elif args.gec in ["nn", "stat"]:
+        PATH = f'../essay/train_{args.gec}gec/'
     elif args.gec == "correct":
-        PATH = '../cefrj/train_correct/'
+        PATH = '../essay/train_correct/'
     else:
-        PATH = '../cefrj/train/'
+        PATH = '../essay/train/'
 
-    with open(PATH + "train.csv", "r") as f:
-        for line in f:
-            lines = list(map(float, line.split(",")))
-            x_train.append(np.array(lines[:-1]))
-            y_train.append(int(lines[-1]))
+    x_train, y_train = data_loader(PATH+"train.csv")
+    x_dev, y_dev = data_loader(PATH+"dev.csv")
 
-    x_train = np.array(x_train)
-    y_train = np.array(y_train)
-    print("x_train.shape", x_train.shape)
-    print("y_train.shape", y_train.shape)
-
-    x_dev = []
-    y_dev = []
-    with open(PATH + "dev.csv", "r") as f:
-        for line in f:
-            lines = list(map(float, line.split(",")))
-            x_dev.append(np.array(lines[:-1]))
-            y_dev.append(int(lines[-1]))
-
-    x_dev = np.array(x_dev)
-    y_dev = np.array(y_dev)
-
-    # 学習
+    # mlpの学習
     if args.clf == "nn":
-        if args.data == "textbook":
-            split_num = 5
-        else:
-            split_num = 3
+        split_num = max(y_train)
+
         x_train = torch.from_numpy(x_train).float()
         y_train = np.identity(split_num)[y_train - 1]
         y_train = torch.from_numpy(y_train).float()
@@ -59,7 +34,8 @@ def train(args):
         y_dev = np.identity(split_num)[y_dev - 1]
         y_dev = torch.from_numpy(y_dev).float()
 
-        model = MLP(args, x_train.shape[1], split_num, criterion=torch.nn.MSELoss())
+        model = MLP(args, x_train.shape[1],
+                    split_num, criterion=torch.nn.MSELoss())
         print(model)
 
         # select device
@@ -112,17 +88,20 @@ def train(args):
         y_pred = torch.tensor(y_pred)
         y_dev = torch.tensor(y_true)
 
-        print()
-        print("accuracy: {0:.4f}".format(accuracy_score(y_dev, y_pred)))
-        print("macro f1: {0:.4f}".format(f1_score(y_dev, y_pred, average="macro")))
-        print("confusion matrix:")
-        print(confusion_matrix(y_dev, y_pred))
+        torch.save(model.state_dict(), args.model)
 
-        torch.save(model.state_dict(), args.out)
-
+    # lrの学習
     else:
         clf = mord.LogisticAT(alpha=0.01)
         clf.fit(x_train, y_train)
+        y_pred = clf.predict(x_dev)
 
         # モデル書き出し
-        joblib.dump(clf, open(args.out, 'wb'))
+        joblib.dump(clf, open(args.model, 'wb'))
+
+    print()
+    print("accuracy: {0:.4f}".format(accuracy_score(y_dev, y_pred)))
+    print("macro f1: {0:.4f}".format(
+        f1_score(y_dev, y_pred, average="macro")))
+    print("confusion matrix:")
+    print(confusion_matrix(y_dev, y_pred))

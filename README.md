@@ -1,35 +1,46 @@
 # GradeSystem
 
-# データについて
-エッセイ（学習者が書いた作文）は以下にある
+## Data
+- essay
+    - A1, A2, B1の3段階
+    - データのパス
+      `/home/lr/kawamoto/m1/GradeSystemForEssay/essay/`
+- textbook
+    - A1, A2, B1, B2, C(C1とC2)の5段階
+    - データのパス  
+    `/home/lr/kawamoto/m1/GradeSystemForEssay/textbook/`
 
-- A1, A2, B1の3段階
+## How to use
 
-`/home/lr/kawamoto/m1/GradeSystemForEssay/cefrj/`
+### Preprocessing 
+```
+python run.py -mode prepro -data essay
+```
 
-テキストブックは以下にある
+### Training
+```
+python run.py -mode train -data essay -clf lr -model ../models/essay/test.pkl
+```
 
-- A1, A2, B1, B2の4段階(C1,C2もあるが数が少ないため利用していない)
+### Test
+```
+python run.py -mode test -data essay -clf lr -model ../models/essay/test.pkl
+```
 
-`/home/lr/kawamoto/m1/GradeSystemForEssay/textbook/`
+## Option
 
-# プログラムの動かし方
-
-0. (仮想環境かなにかでpip install -r requirements.txt)
-
-
-1. 前処理  `python run.py -mode prepro -data essay`
-   
-
-2. 学習時   `python run.py -mode train -data essay -clf lr -out ../model/essay/test.pkl`
-
-
-3. テスト時  `python run.py -mode test -data essay -clf lr -out ../model/essay/test.pkl`
-
-GECの結果を使用するときは -gec [statgec or nngec]
-
-MLPで学習、テストを行いたいときは -clf nn
-
-textbookのときは -data textbook
-
-です。今後詳しく変更していきます。
+- `-data {essay, textbook}`  
+どのデータを使用するか指定
+- `-gec {stat, nn, correct}`  
+データがEssayのとき、GECのどの結果を使用するかを指定  
+`stat`は統計的GEC, `nn`はNN GEC, `correct`は正解文  
+指定しない場合GECの結果は使用しない
+- `-clf {lr nn}`  
+分類器に利用するモデルを指定  
+`lr`はロジスティック回帰、`nn`はMLP
+- `-gpus n`  
+nは使用したいGPUの番号を入れる
+- `-epoch 3000`  
+clfにnnを選択した場合の学習するepochの回数を指定
+- `-model MODEL_PATH`  
+train時に保存、test時に使用するモデルのパスを指定

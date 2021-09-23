@@ -50,27 +50,6 @@ class MLP(torch.nn.Module):
         y_pred = torch.tensor(y_pred)
         y_val = torch.tensor(y_val)
 
-        """
-        # -------しきい値--------
-        output = output.squeeze()
-        if self.args.data == "textbook":
-            y_val = torch.tensor(y_vl) * 5
-            threshold = [0.124, 0.317, 0.52, 0.685, 0.748]
-            y_pred = torch.zeros(nrow)
-            y_pred += (threshold[0] < output.data) * 1
-            y_pred += (threshold[1] < output.data) * 1
-            y_pred += (threshold[2] < output.data) * 1
-            y_pred += (threshold[3] < output.data) * 1
-            y_pred += (threshold[4] < output.data) * 1
-        else:
-            y_val = torch.tensor(y_vl) * 2
-            threshold = [0.25, 0.739]
-            y_pred = torch.zeros(nrow)
-            y_pred += (threshold[0] < output.data) * 1
-            y_pred += (threshold[1] < output.data) * 1
-        # ----------------------
-        """
-
         acc = accuracy_score(y_val, y_pred)
 
         return {'val_loss': loss, 'val_acc': acc}
@@ -78,7 +57,8 @@ class MLP(torch.nn.Module):
     def validation_epoch_end(self, outputs):
         batch_losses = [x['val_loss'] for x in outputs]
         epoch_loss = torch.stack(batch_losses).mean()  # Combine losses
-        epoch_acc = torch.tensor([x['val_acc'] for x in outputs]).mean()  # Combine accuracies
+        epoch_acc = torch.tensor([x['val_acc']
+                                 for x in outputs]).mean()  # Combine accuracies
         return epoch_loss.item(), epoch_acc.item()
 
 

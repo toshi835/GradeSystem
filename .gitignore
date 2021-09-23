@@ -1,6 +1,5 @@
 #ignore dictionary
+incremental-top-down-parser_tmp/
 
-model/
-cefrj/
-incremental-top-down-parser/
-textbook/
+# chache
+src/__pycache__/
