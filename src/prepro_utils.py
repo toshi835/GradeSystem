@@ -378,19 +378,8 @@ def detect_operate_pos(ori_sen, gec_sen, dp_sen):
     ori_sen_list = ori_sen.split()
     gec_sen_list = gec_sen.split()
 
-    # <jp> </jp>が存在したので一時的に変更
-    ori_pos_list = []
-    for x in ori_tagged:
-        sp = x.split("\t")
-        if len(sp) > 1:
-            ori_pos_list.append(sp[1])
-    gec_pos_list = []
-    for x in gec_tagged:
-        sp = x.split("\t")
-        if len(sp) > 1:
-            gec_pos_list.append(sp[1])
-    # ori_pos_list = [x.split('\t')[1] for x in ori_tagged]
-    # gec_pos_list = [x.split('\t')[1] for x in gec_tagged]
+    ori_pos_list = [x.split('\t')[1] for x in ori_tagged]
+    gec_pos_list = [x.split('\t')[1] for x in gec_tagged]
     dp_sen = dp_sen.replace('<msf crr', '<msfcrr')
 
     # add/msf/oms_word = タグ付き<add>xxx</add>
