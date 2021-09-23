@@ -87,7 +87,7 @@ def train(args):
             y_true.append(np.argmax(y_dev[i, :]))
         y_pred = torch.tensor(y_pred)
         y_dev = torch.tensor(y_true)
-
+        # モデル書き出し
         torch.save(model.state_dict(), args.model)
 
     # lrの学習
