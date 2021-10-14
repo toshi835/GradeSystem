@@ -117,3 +117,171 @@ def preprocess(args):
     print("train size:", splits[0])
     print("dev size:", splits[1] - splits[0])
     print("test size:", length - splits[1])
+
+
+def add_widata(args):
+    assert args.data == "essay"
+    files = glob.glob('../essay/wi+locness/original/A1/*.raw')+glob.glob(
+        '../essay/wi+locness/original/A2/*.raw')+glob.glob('../essay/wi+locness/original/B1/*.raw')
+    shuf_list = random.sample(files, len(files))
+    output_path = "../essay/train/"
+
+    """
+    # 1.write normal processed data
+    x = []
+    y = []
+    for dat in shuf_list:
+        print(dat)
+        data = ''
+        with open(dat, 'r') as f:
+            for i in f:
+                data += i.rstrip() + ' '
+
+        surface = Surface(data)
+        ngram, stats, diff = surface.features()
+        grmitem = GrmItem(data)
+        grm, pos_ngram, _ = grmitem.features()
+        inputs = Feature(ngram=ngram, pos_ngram=pos_ngram,
+                         grmitem=grm, word_difficulty=diff, stats=stats).concat()
+        if 'A1' in dat:
+            y.append(1)
+            x.append(inputs)
+        elif 'A2' in dat:
+            y.append(2)
+            x.append(inputs)
+        elif 'B1' in dat:
+            y.append(3)
+            x.append(inputs)
+
+    # save data to csv
+    length = len(y)
+    with open(output_path + "train_wi.csv", "w") as train:
+        for i in range(length):
+            train.write(
+                ",".join(list(map(str, x[i]))) + "," + str(y[i]) + "\n")
+    """
+
+    # 2.statgec
+    output_path = '../essay/train_statgec/'
+    for i in range(len(shuf_list)):
+        shuf_list[i] = shuf_list[i].replace(
+            "original", "ori_statgec_pairs_xml")
+        shuf_list[i] = shuf_list[i].replace("raw", "out")
+
+    # loading xml（input，output，alignment）
+    x = []
+    y = []
+    for dat in shuf_list:
+        print(dat)
+        with open(dat, 'r') as f_xml:
+            aligned, original, gec_out = extract_dp_sentence(f_xml)
+
+        operations_feat, grmitem_feat, original_text = get_gec_items(
+            original, gec_out, aligned)
+
+        # original文に対して行う
+        ngram, stats, diff = Surface(original_text).features()
+        pos_ngram = GrmItem(original_text).features()
+        # 文法項目のinput
+        inputs = Feature_gec(ngram=ngram, pos_ngram=pos_ngram, grmitem=grmitem_feat, word_difficulty=diff,
+                             stats=stats, operations=operations_feat).concat()
+
+        if 'A1' in dat:
+            y.append(1)
+            x.append(inputs)
+        elif 'A2' in dat:
+            y.append(2)
+            x.append(inputs)
+        elif 'B1' in dat:
+            y.append(3)
+            x.append(inputs)
+
+    # save data to csv
+    length = len(y)
+    with open(output_path + "train_wi.csv", "w") as train:
+        for i in range(length):
+            train.write(
+                ",".join(list(map(str, x[i]))) + "," + str(y[i]) + "\n")
+
+    exit()
+    # 3.nngec
+    output_path = '../essay/train_nngec/'
+    for i in range(len(shuf_list)):
+        shuf_list[i] = shuf_list[i].replace(
+            "original", "ori_nngec_pairs_xml")
+
+    # loading xml（input，output，alignment）
+    x = []
+    y = []
+    for dat in shuf_list:
+        print(dat)
+        with open(dat, 'r') as f_xml:
+            aligned, original, gec_out = extract_dp_sentence(f_xml)
+
+        operations_feat, grmitem_feat, original_text = get_gec_items(
+            original, gec_out, aligned)
+
+        # original文に対して行う
+        ngram, stats, diff = Surface(original_text).features()
+        pos_ngram = GrmItem(original_text).features()
+        # 文法項目のinput
+        inputs = Feature_gec(ngram=ngram, pos_ngram=pos_ngram, grmitem=grmitem_feat, word_difficulty=diff,
+                             stats=stats, operations=operations_feat).concat()
+
+        if 'A1' in dat:
+            y.append(1)
+            x.append(inputs)
+        elif 'A2' in dat:
+            y.append(2)
+            x.append(inputs)
+        elif 'B1' in dat:
+            y.append(3)
+            x.append(inputs)
+
+    # save data to csv
+    length = len(y)
+    with open(output_path + "train_wi.csv", "w") as train:
+        for i in range(length):
+            train.write(
+                ",".join(list(map(str, x[i]))) + "," + str(y[i]) + "\n")
+
+    # 4.correct
+    output_path = '../essay/train_correct/'
+    for i in range(len(shuf_list)):
+        shuf_list[i] = shuf_list[i].replace(
+            "original", "ori_correct_pairs_xml")
+
+    # loading xml（input，output，alignment）
+    x = []
+    y = []
+    for dat in shuf_list:
+        print(dat)
+        with open(dat, 'r') as f_xml:
+            aligned, original, gec_out = extract_dp_sentence(f_xml)
+
+        operations_feat, grmitem_feat, original_text = get_gec_items(
+            original, gec_out, aligned)
+
+        # original文に対して行う
+        ngram, stats, diff = Surface(original_text).features()
+        pos_ngram = GrmItem(original_text).features()
+        # 文法項目のinput
+        inputs = Feature_gec(ngram=ngram, pos_ngram=pos_ngram, grmitem=grmitem_feat, word_difficulty=diff,
+                             stats=stats, operations=operations_feat).concat()
+
+        if 'A1' in dat:
+            y.append(1)
+            x.append(inputs)
+        elif 'A2' in dat:
+            y.append(2)
+            x.append(inputs)
+        elif 'B1' in dat:
+            y.append(3)
+            x.append(inputs)
+
+    # save data to csv
+    length = len(y)
+    with open(output_path + "train_wi.csv", "w") as train:
+        for i in range(length):
+            train.write(
+                ",".join(list(map(str, x[i]))) + "," + str(y[i]) + "\n")

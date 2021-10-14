@@ -19,8 +19,13 @@ def train(args):
     else:
         PATH = '../essay/train/'
 
-    x_train, y_train = data_loader(PATH+"train.csv")
-    x_dev, y_dev = data_loader(PATH+"dev.csv")
+    x_train, y_train = data_loader(PATH+"train.csv", args.wo_ngram)
+    if args.wi:
+        x_train_wi, y_train_wi = data_loader(
+            PATH+"train_wi.csv", args.wo_ngram)
+        x_train = np.concatenate([x_train_wi, x_train])
+        y_train = np.concatenate([y_train_wi, y_train])
+    x_dev, y_dev = data_loader(PATH+"dev.csv", args.wo_ngram)
 
     # mlpの学習
     if args.clf == "nn":

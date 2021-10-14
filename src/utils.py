@@ -12,14 +12,18 @@ def show_output(grade, stats, word_diff, grmitem):
     return output_dic
 
 
-def data_loader(PATH):
-    print("loaded from ", PATH)
+def data_loader(PATH, wo_ngram=False):
+    print("loading from ", PATH)
+    if wo_ngram:
+        start = 26591
+    else:
+        start = 0
     x = []
     y = []
     with open(PATH, "r") as f:
         for line in f:
             lines = list(map(float, line.split(",")))
-            x.append(np.array(lines[:-1]))
+            x.append(np.array(lines[start:-1]))
             y.append(int(lines[-1]))
 
     x = np.array(x)

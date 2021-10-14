@@ -19,7 +19,7 @@ def test(args):
     else:
         PATH = '../essay/train/'
 
-    x, y = data_loader(PATH+"test.csv")
+    x, y = data_loader(PATH+"test.csv", args.wo_ngram)
 
     # mlp
     if args.clf == "nn":
