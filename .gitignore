@@ -1,5 +1,5 @@
 #ignore dictionary
 incremental-top-down-parser_tmp/
 
-# chache
+# cache
 src/__pycache__/
