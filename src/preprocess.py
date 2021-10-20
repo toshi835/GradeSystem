@@ -126,7 +126,6 @@ def add_widata(args):
     shuf_list = random.sample(files, len(files))
     output_path = "../essay/train/"
 
-    """
     # 1.write normal processed data
     x = []
     y = []
@@ -159,14 +158,12 @@ def add_widata(args):
         for i in range(length):
             train.write(
                 ",".join(list(map(str, x[i]))) + "," + str(y[i]) + "\n")
-    """
 
     # 2.statgec
     output_path = '../essay/train_statgec/'
     for i in range(len(shuf_list)):
         shuf_list[i] = shuf_list[i].replace(
             "original", "ori_statgec_pairs_xml")
-        shuf_list[i] = shuf_list[i].replace("raw", "out")
 
     # loading xml（input，output，alignment）
     x = []
@@ -203,7 +200,6 @@ def add_widata(args):
             train.write(
                 ",".join(list(map(str, x[i]))) + "," + str(y[i]) + "\n")
 
-    exit()
     # 3.nngec
     output_path = '../essay/train_nngec/'
     for i in range(len(shuf_list)):
