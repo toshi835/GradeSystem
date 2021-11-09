@@ -20,6 +20,8 @@ python run.py -mode prepro -data essay
 ### Training
 ```
 python run.py -mode train -data essay -clf lr -model ../models/essay/test.pkl
+or 
+python run.py -mode train -data essay -clf bert -epoch 1 -gpus 1 -model ../models/essay/debert
 ```
 
 ### Test

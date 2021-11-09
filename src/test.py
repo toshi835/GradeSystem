@@ -1,11 +1,12 @@
 import torch
 import numpy as np
-from sklearn.externals import joblib
+import joblib
 from sklearn.metrics import accuracy_score, confusion_matrix, f1_score
+from torch.utils.data.dataloader import DataLoader
 
 from prepro_utils import Surface, GrmItem, Feature
-from utils import show_output, data_loader
-from model import MLP
+from utils import show_output, data_loader, CreateDataset
+from model import MLP, DebertaClass
 
 
 def test(args):
@@ -22,7 +23,7 @@ def test(args):
     x, y = data_loader(PATH+"test.csv", args.wo_ngram)
 
     # mlp
-    if args.clf == "nn":
+    if args.clf == "mlp":
         split_num = max(y)
 
         x = torch.from_numpy(x).float()
@@ -51,6 +52,48 @@ def test(args):
     print("macro f1: {0:.4f}".format(f1_score(y, y_pred, average="macro")))
     print("confusion matrix:")
     print(confusion_matrix(y, y_pred))
+
+
+def test_bert(args):
+    print("test bert model")
+    if args.data == "textbook":
+        PATH = "../textbook/train_bert/"
+        # elif args.gec in ["nn", "stat"]:
+        #    PATH = f'../essay/train_{args.gec}gec/'
+        # elif args.gec == "correct":
+        #    PATH = '../essay/train_correct/'
+    else:
+        PATH = '../essay/train_bert/'
+
+    dataset_test = CreateDataset(PATH+"test.json")
+    test_loader = DataLoader(dataset=dataset_test, batch_size=32)
+
+    split_num = dataset_test.split_num
+    model = DebertaClass(split_num)
+    model.load_state_dict(torch.load(args.model))
+    model.cuda(args.gpus)
+
+    model.eval()
+    preds = []
+    golds = []
+    with torch.no_grad():
+        for data in test_loader:
+            ids = data['ids'].cuda(args.gpus)
+            mask = data['mask'].cuda(args.gpus)
+            labels = data['labels'].cuda(args.gpus)
+
+            outputs = model.forward(ids, mask)
+
+            pred = torch.argmax(outputs, dim=-1).cpu().numpy()
+            labels = torch.argmax(labels, dim=-1).cpu().numpy()
+            preds.extend(pred.tolist())
+            golds.extend(labels.tolist())
+
+    print()
+    print("accuracy: {0:.4f}".format(accuracy_score(golds, preds)))
+    print("macro f1: {0:.4f}".format(f1_score(golds, preds, average="macro")))
+    print("confusion matrix:")
+    print(confusion_matrix(golds, preds))
 
 
 def test_raw(args):  # lr w/o GECのみ可能

@@ -2,6 +2,7 @@ import torch
 import numpy as np
 from torch.autograd import Variable
 from sklearn.metrics import accuracy_score
+from transformers import DebertaModel
 
 
 class MLP(torch.nn.Module):
@@ -62,7 +63,53 @@ class MLP(torch.nn.Module):
         return epoch_loss.item(), epoch_acc.item()
 
 
+class DebertaClass(torch.nn.Module):
+    # https://github.com/huggingface/transformers/blob/master/src/transformers/models/deberta/modeling_deberta.py
+    def __init__(self, output_size, drop_rate=0.2):
+        super().__init__()
+        self.deberta = DebertaModel.from_pretrained('microsoft/deberta-base')
+        self.dropout = torch.nn.Dropout(drop_rate)
+        #self.pooler = ContextPooler(config)
+
+        self.classifier = torch.nn.Linear(768, int(output_size))
+
+    def forward(self, ids, mask):
+        outputs = self.deberta(ids, attention_mask=mask)
+        encoder_layer = outputs.last_hidden_state[:, 0]
+        droped_output = self.dropout(encoder_layer)
+        logits = self.classifier(droped_output)
+        return logits
+
+
 def evaluate(model, val_loader):
     model.eval()
     outputs = [model.validation_step(batch) for batch in val_loader]
     return model.validation_epoch_end(outputs)
+
+
+def calculate_loss_and_accuracy(model, criterion, loader, gpus):
+    """ 損失・正解率を計算"""
+    model.eval()
+    loss = 0.0
+    total = 0
+    correct = 0
+    with torch.no_grad():
+        for data in loader:
+            # デバイスの指定
+            ids = data['ids'].cuda(gpus)
+            mask = data['mask'].cuda(gpus)
+            labels = data['labels'].cuda(gpus)
+
+            # 順伝播
+            outputs = model.forward(ids, mask)
+
+            # 損失計算
+            loss += criterion(outputs, labels).item()
+
+            # バッチサイズの長さの予測ラベル配列
+            pred = torch.argmax(outputs, dim=-1).cpu().numpy()
+            labels = torch.argmax(labels, dim=-1).cpu().numpy()
+            total += len(labels)
+            correct += (pred == labels).sum().item()
+
+    return loss / len(loader), correct / total

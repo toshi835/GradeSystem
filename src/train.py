@@ -1,12 +1,12 @@
 import mord
 import numpy as np
 import torch
+import joblib
 from torch.utils.data import TensorDataset, DataLoader
 from sklearn.metrics import accuracy_score, confusion_matrix, f1_score
-from sklearn.externals import joblib
 
-from model import MLP, evaluate
-from utils import data_loader
+from model import MLP, DebertaClass, evaluate, calculate_loss_and_accuracy
+from utils import data_loader, CreateDataset
 
 
 def train(args):
@@ -21,14 +21,15 @@ def train(args):
 
     x_train, y_train = data_loader(PATH+"train.csv", args.wo_ngram)
     if args.wi:
-        x_train_wi, y_train_wi = data_loader(
-            PATH+"train_wi.csv", args.wo_ngram)
-        x_train = np.concatenate([x_train_wi, x_train])
-        y_train = np.concatenate([y_train_wi, y_train])
+        # x_train_wi, y_train_wi = data_loader(PATH+"train_wi.csv", args.wo_ngram)
+        x_train, y_train = data_loader(
+            PATH+"train_wi.csv", args.wo_ngram)  # 今だけ
+        #x_train = np.concatenate([x_train_wi, x_train])
+        #y_train = np.concatenate([y_train_wi, y_train])
     x_dev, y_dev = data_loader(PATH+"dev.csv", args.wo_ngram)
 
     # mlpの学習
-    if args.clf == "nn":
+    if args.clf == "mlp":
         split_num = max(y_train)
 
         x_train = torch.from_numpy(x_train).float()
@@ -41,6 +42,7 @@ def train(args):
 
         model = MLP(args, x_train.shape[1],
                     split_num, criterion=torch.nn.MSELoss())
+        # model.load_state_dict(torch.load("../models/essay/prepro_wi.pth"))
         print(model)
 
         # select device
@@ -110,3 +112,74 @@ def train(args):
         f1_score(y_dev, y_pred, average="macro")))
     print("confusion matrix:")
     print(confusion_matrix(y_dev, y_pred))
+
+
+def train_bert(args):
+    if args.data == "textbook":
+        PATH = "../textbook/train_bert/"
+    # elif args.gec in ["nn", "stat"]:
+    #    PATH = f'../essay/train_{args.gec}gec/'
+    # elif args.gec == "correct":
+    #    PATH = '../essay/train_correct/'
+    else:
+        PATH = '../essay/train_bert/'
+    if args.wi:
+        assert False  # No implementation
+
+    dataset_train = CreateDataset(PATH+"train.json")
+    dataset_dev = CreateDataset(PATH+"dev.json")
+
+    split_num = dataset_train.split_num
+    model = DebertaClass(split_num)
+    num_parameters = sum(pa.numel() for pa in model.parameters())
+    print("number of parameter is", num_parameters)
+    print(model)
+
+    criterion = torch.nn.BCEWithLogitsLoss()  # sigmoid+BCEloss(交差エントロピー)
+
+    optimizer = torch.optim.AdamW(params=model.parameters(), lr=2e-5)
+
+    # select device
+    if not torch.cuda.is_available():
+        assert False
+
+    model = model.cuda(args.gpus)
+
+    train_loader = DataLoader(dataset=dataset_train, batch_size=32)
+    valid_loader = DataLoader(dataset=dataset_dev, batch_size=32)
+
+    # 学習
+    log_train = []
+    log_valid = []
+    for epoch in range(args.epoch):
+        model.train()
+        for data in train_loader:
+            # デバイスの指定
+            ids = data['ids'].cuda(args.gpus)
+            mask = data['mask'].cuda(args.gpus)
+            labels = data['labels'].cuda(args.gpus)
+
+            # 勾配をゼロで初期化
+            optimizer.zero_grad()
+
+            # 順伝播 + 誤差逆伝播 + 重み更新
+            outputs = model.forward(ids, mask)
+            loss = criterion(outputs, labels)
+            loss.backward()
+            optimizer.step()
+
+        # 損失と正解率の算出
+        loss_train, acc_train = calculate_loss_and_accuracy(
+            model, criterion, train_loader, args.gpus)
+        loss_valid, acc_valid = calculate_loss_and_accuracy(
+            model, criterion, valid_loader, args.gpus)
+        log_train.append([loss_train, acc_train])
+        log_valid.append([loss_valid, acc_valid])
+
+        # ログを出力
+        print("Epoch [{}], train_loss: {:.4f}, train_acc: {:.4f}, val_loss: {:.4f}, val_acc: {:.4f}".format(
+            epoch + 1, loss_train, acc_train, loss_valid, acc_valid))
+
+    # チェックポイントの保存
+    torch.save(model.to("cpu").state_dict(),  # cpuに回しておかないと他のgpuに回すときに一度元のGPUに積まれてしまう
+               f'{args.model}_checkpoint{epoch + 1}.pt')
