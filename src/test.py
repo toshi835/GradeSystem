@@ -13,6 +13,8 @@ def test(args):
     # データ読み込み
     if args.data == "textbook":
         PATH = "../textbook/train/"
+    elif False:
+        PATH = '../essay/wi+locness/train/'
     elif args.gec in ["nn", "stat"]:
         PATH = f'../essay/train_{args.gec}gec/'
     elif args.gec == "correct":
@@ -20,7 +22,9 @@ def test(args):
     else:
         PATH = '../essay/train/'
 
-    x, y = data_loader(PATH+"test.csv", args.wo_ngram)
+    ADD_PATH = "../essay/train_bert/test_embed.csv" if args.embed else None
+    x, y = data_loader(PATH+"test.csv", ADD_PATH=ADD_PATH,
+                       wo_ngram=args.wo_ngram)
 
     # mlp
     if args.clf == "mlp":
@@ -58,6 +62,8 @@ def test_bert(args):
     print("test bert model")
     if args.data == "textbook":
         PATH = "../textbook/train_bert/"
+    elif False:
+        PATH = '../essay/wi+locness/train_bert/'
         # elif args.gec in ["nn", "stat"]:
         #    PATH = f'../essay/train_{args.gec}gec/'
         # elif args.gec == "correct":
@@ -65,7 +71,7 @@ def test_bert(args):
     else:
         PATH = '../essay/train_bert/'
 
-    dataset_test = CreateDataset(PATH+"test.json")
+    dataset_test = CreateDataset(PATH+"test.json")  # "train_wi.json")
     test_loader = DataLoader(dataset=dataset_test, batch_size=32)
 
     split_num = dataset_test.split_num

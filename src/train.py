@@ -1,8 +1,11 @@
+from codecs import encode
 import mord
 import numpy as np
 import torch
 import joblib
+from tqdm import tqdm
 from torch.utils.data import TensorDataset, DataLoader
+from torch.cuda.amp import GradScaler, autocast
 from sklearn.metrics import accuracy_score, confusion_matrix, f1_score
 
 from model import MLP, DebertaClass, evaluate, calculate_loss_and_accuracy
@@ -12,6 +15,8 @@ from utils import data_loader, CreateDataset
 def train(args):
     if args.data == "textbook":
         PATH = "../textbook/train/"
+    elif False:
+        PATH = '../essay/wi+locness/train/'
     elif args.gec in ["nn", "stat"]:
         PATH = f'../essay/train_{args.gec}gec/'
     elif args.gec == "correct":
@@ -19,14 +24,18 @@ def train(args):
     else:
         PATH = '../essay/train/'
 
-    x_train, y_train = data_loader(PATH+"train.csv", args.wo_ngram)
+    ADD_PATH_train = "../essay/train_bert/train_embed.csv" if args.embed else None
+    ADD_PATH_dev = "../essay/train_bert/dev_embed.csv" if args.embed else None
+
+    x_train, y_train = data_loader(
+        PATH+"train.csv", ADD_PATH=ADD_PATH_train, wo_ngram=args.wo_ngram)
+    x_dev, y_dev = data_loader(
+        PATH+"dev.csv", ADD_PATH=ADD_PATH_dev, wo_ngram=args.wo_ngram)
     if args.wi:
-        # x_train_wi, y_train_wi = data_loader(PATH+"train_wi.csv", args.wo_ngram)
-        x_train, y_train = data_loader(
-            PATH+"train_wi.csv", args.wo_ngram)  # 今だけ
-        #x_train = np.concatenate([x_train_wi, x_train])
-        #y_train = np.concatenate([y_train_wi, y_train])
-    x_dev, y_dev = data_loader(PATH+"dev.csv", args.wo_ngram)
+        x_train_wi, y_train_wi = data_loader(
+            PATH+"train_wi.csv", wo_ngram=args.wo_ngram)
+        x_train = np.concatenate([x_train_wi, x_train])
+        y_train = np.concatenate([y_train_wi, y_train])
 
     # mlpの学習
     if args.clf == "mlp":
@@ -42,7 +51,6 @@ def train(args):
 
         model = MLP(args, x_train.shape[1],
                     split_num, criterion=torch.nn.MSELoss())
-        # model.load_state_dict(torch.load("../models/essay/prepro_wi.pth"))
         print(model)
 
         # select device
@@ -117,6 +125,8 @@ def train(args):
 def train_bert(args):
     if args.data == "textbook":
         PATH = "../textbook/train_bert/"
+    elif False:
+        PATH = '../essay/wi+locness/train_bert/'
     # elif args.gec in ["nn", "stat"]:
     #    PATH = f'../essay/train_{args.gec}gec/'
     # elif args.gec == "correct":
@@ -145,8 +155,34 @@ def train_bert(args):
 
     model = model.cuda(args.gpus)
 
-    train_loader = DataLoader(dataset=dataset_train, batch_size=32)
-    valid_loader = DataLoader(dataset=dataset_dev, batch_size=32)
+    train_loader = DataLoader(dataset=dataset_train, batch_size=8)
+    valid_loader = DataLoader(dataset=dataset_dev, batch_size=8)
+
+    scaler = GradScaler(enabled=True)  # fp16用
+
+    """
+    # embeddingを入手するためのコード
+    # modelからのreturnをencoder_layer.view(-1)にして、batchsizeを1にする必要がある
+    model.eval()
+    with torch.no_grad():
+        with open("../essay/train_bert/train_embed.csv", "w") as t:
+            for data in tqdm(train_loader):
+                # デバイスの指定
+                ids = data['ids'].cuda(args.gpus)
+                mask = data['mask'].cuda(args.gpus)
+                labels = data['labels'].cuda(args.gpus)
+
+                # 勾配をゼロで初期化
+                optimizer.zero_grad()
+
+                # 順伝播 + 誤差逆伝播 + 重み更新
+                with autocast(enabled=True):
+                    encoder_layer = model.forward(ids, mask)
+                    encoder = encoder_layer.cpu().tolist()
+                    t.write(",".join(list(map(str, encoder))) +
+                            "," + str(int(torch.argmax(labels)+1)) + "\n")
+    exit()
+    """
 
     # 学習
     log_train = []
@@ -163,10 +199,13 @@ def train_bert(args):
             optimizer.zero_grad()
 
             # 順伝播 + 誤差逆伝播 + 重み更新
-            outputs = model.forward(ids, mask)
-            loss = criterion(outputs, labels)
-            loss.backward()
-            optimizer.step()
+            with autocast(enabled=True):
+                outputs = model.forward(ids, mask)
+                loss = criterion(outputs, labels)
+
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
 
         # 損失と正解率の算出
         loss_train, acc_train = calculate_loss_and_accuracy(

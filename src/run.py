@@ -39,5 +39,6 @@ if __name__ == "__main__":
     parser.add_argument('-model', default="../models/essay/test.pth")
     parser.add_argument('-wi', default=False, type=bool)
     parser.add_argument('-wo_ngram', default=False, type=bool)
+    parser.add_argument('-embed', default=False, type=bool)
     args = parser.parse_args()
     main(args)

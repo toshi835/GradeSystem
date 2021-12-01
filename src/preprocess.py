@@ -135,13 +135,18 @@ def preprocess_bert(args):
     else:
         output_path = "../textbook/train_bert/"
         files = glob.glob('../textbook/10_instance/raw/**/*.dat')
+
+    # for wi
+    # files = glob.glob('../essay/wi+locness/original/A1/*.raw')+glob.glob(
+    #    '../essay/wi+locness/original/A2/*.raw')+glob.glob('../essay/wi+locness/original/B1/*.raw')
+    #output_path = "../essay/wi+locness/train_bert/"
+
     shuf_list = random.sample(files, len(files))
 
     src_strs = []
     src_ids = []
     targets = []
     att_masks = []
-    ma_cnt = 0
     for f_path in shuf_list:
         print(f_path)
         src_str = ''
@@ -169,8 +174,6 @@ def preprocess_bert(args):
         elif 'C' in f_path:
             targets.append(5)
 
-    print(ma_cnt)
-    exit()
     num_class = max(targets)
     targets = torch.tensor(targets, dtype=int)
     targets = torch.eye(num_class)[targets - 1]

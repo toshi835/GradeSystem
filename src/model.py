@@ -69,7 +69,6 @@ class DebertaClass(torch.nn.Module):
         super().__init__()
         self.deberta = DebertaModel.from_pretrained('microsoft/deberta-base')
         self.dropout = torch.nn.Dropout(drop_rate)
-        #self.pooler = ContextPooler(config)
 
         self.classifier = torch.nn.Linear(768, int(output_size))
 
@@ -78,7 +77,7 @@ class DebertaClass(torch.nn.Module):
         encoder_layer = outputs.last_hidden_state[:, 0]
         droped_output = self.dropout(encoder_layer)
         logits = self.classifier(droped_output)
-        return logits
+        return logits  # encoder_layer.view(-1)
 
 
 def evaluate(model, val_loader):

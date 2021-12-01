@@ -15,19 +15,30 @@ def show_output(grade, stats, word_diff, grmitem):
     return output_dic
 
 
-def data_loader(PATH, wo_ngram=False):
-    print("loading from ", PATH)
+def data_loader(PATH, ADD_PATH=None, wo_ngram=False):
     if wo_ngram:
         start = 26591
     else:
         start = 0
     x = []
     y = []
-    with open(PATH, "r") as f:
-        for line in f:
-            lines = list(map(float, line.split(",")))
-            x.append(np.array(lines[start:-1]))
-            y.append(int(lines[-1]))
+    if not ADD_PATH:
+        print("loading from ", PATH)
+        with open(PATH, "r") as f:
+            for line in f:
+                lines = list(map(float, line.split(",")))
+                x.append(np.array(lines[start:-1]))
+                y.append(int(lines[-1]))
+    else:
+        print("loading from ", PATH, ADD_PATH)
+        with open(PATH, "r") as f, open(ADD_PATH, "r") as add_f:
+            for line, add_line in zip(f, add_f):
+                lines = list(map(float, line.split(",")))
+                add_lines = list(map(float, add_line.split(",")))
+                x.append(np.array(lines[start:-1]+add_lines[:-1]))
+                y.append(int(add_lines[-1]))
+                #print(lines[-1], add_lines[-1])
+                assert int(lines[-1]) == int(add_lines[-1])
 
     x = np.array(x)
     y = np.array(y)
@@ -61,7 +72,7 @@ class CreateDataset(Dataset):
             for line in f_json:
                 df = json.loads(line)
                 inp = {"input_ids": torch.tensor(
-                    df["src_id"][:128]), "attention_mask": torch.tensor(df["att_mask"][:128])}
+                    df["src_id"]), "attention_mask": torch.tensor(df["att_mask"])}
                 tar = torch.tensor(df["target"])
 
                 self.x.append(inp)
