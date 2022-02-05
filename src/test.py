@@ -6,24 +6,29 @@ from torch.utils.data.dataloader import DataLoader
 
 from prepro_utils import Surface, GrmItem, Feature
 from utils import show_output, data_loader, CreateDataset
-from model import MLP, DebertaClass
+from model import MLP, Linear, DebertaClass
 
 
 def test(args):
     # データ読み込み
+    FEA_PATH = ""
+    EMBED_PATH = ""
     if args.data == "textbook":
-        PATH = "../textbook/train/"
-    elif False:
-        PATH = '../essay/wi+locness/train/'
+        FEA_PATH = "../textbook/paragraph/train/"if args.feature else ""
+        EMBED_PATH = "../textbook/paragraph/train_bert/" if args.embed else ""
+    elif args.data == "wi":
+        FEA_PATH = '../essay/wi+locness/train/'if args.feature else ""
+        EMBED_PATH = "../essay/wi+locness/train_bert/" if args.embed else ""
     elif args.gec in ["nn", "stat"]:
-        PATH = f'../essay/train_{args.gec}gec/'
+        FEA_PATH = f'../essay/train_{args.gec}gec/'  # if args.feature else ""
     elif args.gec == "correct":
-        PATH = '../essay/train_correct/'
+        FEA_PATH = '../essay/train_correct/'  # if args.feature else ""
     else:
-        PATH = '../essay/train/'
+        FEA_PATH = '../essay/train/'if args.feature else ""
+        EMBED_PATH = "../essay/train_bert/" if args.embed else ""
+    assert FEA_PATH or EMBED_PATH
 
-    ADD_PATH = "../essay/train_bert/test_embed.csv" if args.embed else None
-    x, y = data_loader(PATH+"test.csv", ADD_PATH=ADD_PATH,
+    x, y = data_loader(mode="test", FEA_PATH=FEA_PATH, EMBED_PATH=EMBED_PATH,
                        wo_ngram=args.wo_ngram)
 
     # mlp
@@ -34,7 +39,10 @@ def test(args):
         y = y - 1
         y = torch.from_numpy(y).float()
 
-        model = MLP(args, x.shape[1], split_num)
+        if EMBED_PATH:
+            model = Linear(args, x.shape[1], split_num)
+        else:
+            model = MLP(args, x.shape[1], split_num)
         model.load_state_dict(torch.load(args.model))
         model.eval()
 
@@ -61,8 +69,8 @@ def test(args):
 def test_bert(args):
     print("test bert model")
     if args.data == "textbook":
-        PATH = "../textbook/train_bert/"
-    elif False:
+        PATH = "../textbook/paragraph/train_bert/"
+    elif args.data == "wi":
         PATH = '../essay/wi+locness/train_bert/'
         # elif args.gec in ["nn", "stat"]:
         #    PATH = f'../essay/train_{args.gec}gec/'

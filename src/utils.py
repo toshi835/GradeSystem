@@ -1,3 +1,4 @@
+import collections
 import numpy as np
 import json
 import torch
@@ -15,29 +16,39 @@ def show_output(grade, stats, word_diff, grmitem):
     return output_dic
 
 
-def data_loader(PATH, ADD_PATH=None, wo_ngram=False):
+def data_loader(mode, FEA_PATH="", EMBED_PATH="", wo_ngram=False):
+    if FEA_PATH:
+        FEA_PATH += f"{mode}.csv"
+    if EMBED_PATH:
+        EMBED_PATH += f"{mode}_embed.csv"
     if wo_ngram:
         start = 26591
     else:
         start = 0
     x = []
     y = []
-    if not ADD_PATH:
-        print("loading from ", PATH)
-        with open(PATH, "r") as f:
+    if FEA_PATH and not EMBED_PATH:
+        print("loading from ", FEA_PATH)
+        with open(FEA_PATH, "r") as f:
+            for line in f:
+                lines = list(map(float, line.split(",")))
+                x.append(np.array(lines[start:-1]))
+                y.append(int(lines[-1]))
+    elif not FEA_PATH and EMBED_PATH:
+        print("loading from ", EMBED_PATH)
+        with open(EMBED_PATH, "r") as f:
             for line in f:
                 lines = list(map(float, line.split(",")))
                 x.append(np.array(lines[start:-1]))
                 y.append(int(lines[-1]))
     else:
-        print("loading from ", PATH, ADD_PATH)
-        with open(PATH, "r") as f, open(ADD_PATH, "r") as add_f:
+        print("loading from ", FEA_PATH, EMBED_PATH)
+        with open(FEA_PATH, "r") as f, open(EMBED_PATH, "r") as add_f:
             for line, add_line in zip(f, add_f):
                 lines = list(map(float, line.split(",")))
                 add_lines = list(map(float, add_line.split(",")))
                 x.append(np.array(lines[start:-1]+add_lines[:-1]))
                 y.append(int(add_lines[-1]))
-                #print(lines[-1], add_lines[-1])
                 assert int(lines[-1]) == int(add_lines[-1])
 
     x = np.array(x)

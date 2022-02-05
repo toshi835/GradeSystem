@@ -1,41 +1,46 @@
-from codecs import encode
 import mord
 import numpy as np
 import torch
 import joblib
 from tqdm import tqdm
+
 from torch.utils.data import TensorDataset, DataLoader
 from torch.cuda.amp import GradScaler, autocast
 from sklearn.metrics import accuracy_score, confusion_matrix, f1_score
 
-from model import MLP, DebertaClass, evaluate, calculate_loss_and_accuracy
+from model import MLP, Linear, DebertaClass, evaluate, calculate_loss_and_accuracy
 from utils import data_loader, CreateDataset
 
 
 def train(args):
+    FEA_PATH = ""
+    EMBED_PATH = ""
     if args.data == "textbook":
-        PATH = "../textbook/train/"
-    elif False:
-        PATH = '../essay/wi+locness/train/'
+        FEA_PATH = "../textbook/paragraph/train/" if args.feature else ""
+        EMBED_PATH = "../textbook/paragraph/train_bert/" if args.embed else ""
+    elif args.data == "wi":
+        FEA_PATH = '../essay/wi+locness/train/' if args.feature else ""
+        EMBED_PATH = "../essay/wi+locness/train_bert/" if args.embed else ""
     elif args.gec in ["nn", "stat"]:
-        PATH = f'../essay/train_{args.gec}gec/'
+        FEA_PATH = f'../essay/train_{args.gec}gec/'  # if args.feature else ""
     elif args.gec == "correct":
-        PATH = '../essay/train_correct/'
+        FEA_PATH = '../essay/train_correct/'  # if args.feature else ""
     else:
-        PATH = '../essay/train/'
-
-    ADD_PATH_train = "../essay/train_bert/train_embed.csv" if args.embed else None
-    ADD_PATH_dev = "../essay/train_bert/dev_embed.csv" if args.embed else None
+        FEA_PATH = '../essay/train/' if args.feature else ""
+        EMBED_PATH = "../essay/train_bert/" if args.embed else ""
+    assert FEA_PATH or EMBED_PATH
 
     x_train, y_train = data_loader(
-        PATH+"train.csv", ADD_PATH=ADD_PATH_train, wo_ngram=args.wo_ngram)
+        mode="train", FEA_PATH=FEA_PATH, EMBED_PATH=EMBED_PATH, wo_ngram=args.wo_ngram)
     x_dev, y_dev = data_loader(
-        PATH+"dev.csv", ADD_PATH=ADD_PATH_dev, wo_ngram=args.wo_ngram)
-    if args.wi:
-        x_train_wi, y_train_wi = data_loader(
-            PATH+"train_wi.csv", wo_ngram=args.wo_ngram)
-        x_train = np.concatenate([x_train_wi, x_train])
-        y_train = np.concatenate([y_train_wi, y_train])
+        mode="dev", FEA_PATH=FEA_PATH, EMBED_PATH=EMBED_PATH, wo_ngram=args.wo_ngram)
+
+    # 使わない
+    # if args.wi:
+    #    x_train_wi, y_train_wi = data_loader(
+    #        FEA_PATH+"train_wi.csv", wo_ngram=args.wo_ngram)
+    #    x_train = np.concatenate([x_train_wi, x_train])
+    #    y_train = np.concatenate([y_train_wi, y_train])
 
     # mlpの学習
     if args.clf == "mlp":
@@ -49,8 +54,13 @@ def train(args):
         y_dev = np.identity(split_num)[y_dev - 1]
         y_dev = torch.from_numpy(y_dev).float()
 
-        model = MLP(args, x_train.shape[1],
-                    split_num, criterion=torch.nn.MSELoss())
+        if EMBED_PATH:  # deberta+素性 or DeBERTaの場合は線形結合層のみ
+            model = Linear(
+                args, x_train.shape[1], split_num, criterion=torch.nn.MSELoss())
+        else:
+            model = MLP(
+                args, x_train.shape[1], split_num, criterion=torch.nn.MSELoss())
+
         print(model)
 
         # select device
@@ -70,7 +80,7 @@ def train(args):
         train_loader = DataLoader(dataset=train, batch_size=32)
         valid_loader = DataLoader(dataset=valid, batch_size=32)
 
-        optimizer = torch.optim.SGD(model.parameters(), lr=0.05)
+        optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr)  # 0.05
 
         loss_history = []
         for epoch in range(args.epoch):
@@ -89,6 +99,10 @@ def train(args):
                     epoch + 1, train_loss, val_loss, val_acc))
             loss_history.append(train_loss)
 
+            if (epoch + 1) % 5000 == 0:
+                torch.save(model.state_dict(),
+                           f'{args.model}_epoch{epoch + 1}.pth')
+
         model.eval()
         output = model.forward(x_dev)
         output.data = output.data.to("cpu")
@@ -103,7 +117,7 @@ def train(args):
         y_pred = torch.tensor(y_pred)
         y_dev = torch.tensor(y_true)
         # モデル書き出し
-        torch.save(model.state_dict(), args.model)
+        torch.save(model.state_dict(), args.model+".pth")
 
     # lrの学習
     else:
@@ -112,7 +126,7 @@ def train(args):
         y_pred = clf.predict(x_dev)
 
         # モデル書き出し
-        joblib.dump(clf, open(args.model, 'wb'))
+        joblib.dump(clf, open(args.model+".pkl", 'wb'))
 
     print()
     print("accuracy: {0:.4f}".format(accuracy_score(y_dev, y_pred)))
@@ -124,8 +138,8 @@ def train(args):
 
 def train_bert(args):
     if args.data == "textbook":
-        PATH = "../textbook/train_bert/"
-    elif False:
+        PATH = "../textbook/paragraph/train_bert/"
+    elif args.data == "wi":
         PATH = '../essay/wi+locness/train_bert/'
     # elif args.gec in ["nn", "stat"]:
     #    PATH = f'../essay/train_{args.gec}gec/'
@@ -133,8 +147,6 @@ def train_bert(args):
     #    PATH = '../essay/train_correct/'
     else:
         PATH = '../essay/train_bert/'
-    if args.wi:
-        assert False  # No implementation
 
     dataset_train = CreateDataset(PATH+"train.json")
     dataset_dev = CreateDataset(PATH+"dev.json")
@@ -147,7 +159,8 @@ def train_bert(args):
 
     criterion = torch.nn.BCEWithLogitsLoss()  # sigmoid+BCEloss(交差エントロピー)
 
-    optimizer = torch.optim.AdamW(params=model.parameters(), lr=2e-5)
+    optimizer = torch.optim.AdamW(
+        params=model.parameters(), lr=args.lr)
 
     # select device
     if not torch.cuda.is_available():
@@ -155,18 +168,18 @@ def train_bert(args):
 
     model = model.cuda(args.gpus)
 
-    train_loader = DataLoader(dataset=dataset_train, batch_size=8)
-    valid_loader = DataLoader(dataset=dataset_dev, batch_size=8)
+    train_loader = DataLoader(dataset=dataset_train, batch_size=8)  # 1
+    valid_loader = DataLoader(dataset=dataset_dev, batch_size=8)  # 1
 
     scaler = GradScaler(enabled=True)  # fp16用
 
     """
-    # embeddingを入手するためのコード
-    # modelからのreturnをencoder_layer.view(-1)にして、batchsizeを1にする必要がある
-    model.eval()
-    with torch.no_grad():
-        with open("../essay/train_bert/train_embed.csv", "w") as t:
-            for data in tqdm(train_loader):
+    # deberta+素性を行うためにembeddingを保存するためのコード
+    # ---注意---
+    # DebertaClassのreturnをencoder_layer.view(-1)にして、batchsizeを1にする必要がある
+    def write_embed(loader, output_path):
+        with open(output_path, "w") as t:
+            for data in tqdm(loader):
                 # デバイスの指定
                 ids = data['ids'].cuda(args.gpus)
                 mask = data['mask'].cuda(args.gpus)
@@ -181,6 +194,14 @@ def train_bert(args):
                     encoder = encoder_layer.cpu().tolist()
                     t.write(",".join(list(map(str, encoder))) +
                             "," + str(int(torch.argmax(labels)+1)) + "\n")
+
+    model.eval()
+    with torch.no_grad():
+        write_embed(loader=train_loader, output_path=PATH+"train_embed.csv")
+        write_embed(loader=valid_loader, output_path=PATH+"dev_embed.csv")
+        dataset_test = CreateDataset(PATH+"test.json")
+        test_loader = DataLoader(dataset=dataset_test, batch_size=1)
+        write_embed(loader=test_loader, output_path=PATH+"test_embed.csv")
     exit()
     """
 

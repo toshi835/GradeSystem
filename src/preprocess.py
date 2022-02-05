@@ -1,8 +1,11 @@
+import collections
 import glob
 import random
 import math
 import json
 import torch
+from tqdm import tqdm
+import os
 
 from prepro_utils import Surface, GrmItem, Feature, Feature_gec, extract_dp_sentence, get_gec_items
 
@@ -14,9 +17,12 @@ def preprocess(args):
     if args.data == "essay":
         output_path = "../essay/train/"
         files = glob.glob('../essay/original/**/*.raw')
+    elif args.data == "wi":
+        output_path = "../essay/wi+locness/train/"
+        files = glob.glob('../essay/wi+locness/original/**/*.raw')
     else:
-        output_path = "../textbook/train/"
-        files = glob.glob('../textbook/10_instance/raw/**/*.dat')
+        output_path = "../textbook/paragraph/train/"
+        files = glob.glob('../textbook/paragraph/raw/**/*.dat')
     shuf_list = random.sample(files, len(files))
 
     if args.gec:
@@ -44,8 +50,7 @@ def preprocess(args):
         # loading xml（input，output，alignment）
         x = []
         y = []
-        for dat in shuf_list:
-            print(dat)
+        for dat in tqdm(shuf_list):
             with open(dat, 'r') as f_xml:
                 aligned, original, gec_out = extract_dp_sentence(f_xml)
 
@@ -69,10 +74,10 @@ def preprocess(args):
 
     # normal essay or textbook
     else:
+        print("preprocess of feature extraction")
         x = []
         y = []
-        for dat in shuf_list:
-            print(dat)
+        for dat in tqdm(shuf_list):
             data = ''
             with open(dat, 'r') as f:
                 for i in f:
@@ -102,6 +107,7 @@ def preprocess(args):
     splits = [math.floor(ratio[0] * length),
               math.floor((ratio[0] + ratio[1]) * length)]
 
+    os.makedirs(output_path, exist_ok=True)
     with open(output_path + "train.csv", "w") as train, open(output_path + "dev.csv", "w") as dev, open(
             output_path + "test.csv", "w") as test:
         for i in range(length):
@@ -132,14 +138,14 @@ def preprocess_bert(args):
     if args.data == "essay":
         output_path = "../essay/train_bert/"
         files = glob.glob('../essay/original/**/*.raw')
+    elif args.data == "wi":
+        files = glob.glob('../essay/wi+locness/original/**/*.raw')
+        # wiの3クラス分類
+        # files = glob.glob('../essay/wi+locness/original/A1/*.raw')+glob.glob('../essay/wi+locness/original/A2/*.raw')+glob.glob('../essay/wi+locness/original/B1/*.raw')
+        output_path = "../essay/wi+locness/train_bert/"
     else:
-        output_path = "../textbook/train_bert/"
-        files = glob.glob('../textbook/10_instance/raw/**/*.dat')
-
-    # for wi
-    # files = glob.glob('../essay/wi+locness/original/A1/*.raw')+glob.glob(
-    #    '../essay/wi+locness/original/A2/*.raw')+glob.glob('../essay/wi+locness/original/B1/*.raw')
-    #output_path = "../essay/wi+locness/train_bert/"
+        output_path = "../textbook/paragraph/train_bert/"
+        files = glob.glob('../textbook/paragraph/raw/**/*.dat')
 
     shuf_list = random.sample(files, len(files))
 
@@ -147,8 +153,7 @@ def preprocess_bert(args):
     src_ids = []
     targets = []
     att_masks = []
-    for f_path in shuf_list:
-        print(f_path)
+    for f_path in tqdm(shuf_list):
         src_str = ''
         with open(f_path, 'r') as f:
             for i in f:
@@ -185,6 +190,7 @@ def preprocess_bert(args):
     splits = [math.floor(ratio[0] * length),
               math.floor((ratio[0] + ratio[1]) * length)]
 
+    os.makedirs(output_path, exist_ok=True)
     with open(output_path + "train.json", "w") as train, open(output_path + "dev.json", "w") as dev, open(
             output_path + "test.json", "w") as test:
         for i in range(length):
@@ -212,8 +218,7 @@ def add_widata(args):
     # 1.write normal processed data
     x = []
     y = []
-    for dat in shuf_list:
-        print(dat)
+    for dat in tqdm(shuf_list):
         data = ''
         with open(dat, 'r') as f:
             for i in f:
@@ -237,6 +242,7 @@ def add_widata(args):
 
     # save data to csv
     length = len(y)
+    os.makedirs(output_path, exist_ok=True)
     with open(output_path + "train_wi.csv", "w") as train:
         for i in range(length):
             train.write(
@@ -251,8 +257,7 @@ def add_widata(args):
     # loading xml（input，output，alignment）
     x = []
     y = []
-    for dat in shuf_list:
-        print(dat)
+    for dat in tqdm(shuf_list):
         with open(dat, 'r') as f_xml:
             aligned, original, gec_out = extract_dp_sentence(f_xml)
 
@@ -278,6 +283,7 @@ def add_widata(args):
 
     # save data to csv
     length = len(y)
+    os.makedirs(output_path, exist_ok=True)
     with open(output_path + "train_wi.csv", "w") as train:
         for i in range(length):
             train.write(
@@ -292,8 +298,7 @@ def add_widata(args):
     # loading xml（input，output，alignment）
     x = []
     y = []
-    for dat in shuf_list:
-        print(dat)
+    for dat in tqdm(shuf_list):
         with open(dat, 'r') as f_xml:
             aligned, original, gec_out = extract_dp_sentence(f_xml)
 
@@ -319,6 +324,7 @@ def add_widata(args):
 
     # save data to csv
     length = len(y)
+    os.makedirs(output_path, exist_ok=True)
     with open(output_path + "train_wi.csv", "w") as train:
         for i in range(length):
             train.write(
@@ -333,8 +339,7 @@ def add_widata(args):
     # loading xml（input，output，alignment）
     x = []
     y = []
-    for dat in shuf_list:
-        print(dat)
+    for dat in tqdm(shuf_list):
         with open(dat, 'r') as f_xml:
             aligned, original, gec_out = extract_dp_sentence(f_xml)
 
@@ -360,6 +365,7 @@ def add_widata(args):
 
     # save data to csv
     length = len(y)
+    os.makedirs(output_path, exist_ok=True)
     with open(output_path + "train_wi.csv", "w") as train:
         for i in range(length):
             train.write(

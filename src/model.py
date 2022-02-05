@@ -63,6 +63,18 @@ class MLP(torch.nn.Module):
         return epoch_loss.item(), epoch_acc.item()
 
 
+class Linear(MLP):
+    def __init__(self, args, n_input, n_output, criterion=torch.nn.MSELoss(), drop_rate=0.1):
+        super().__init__(args, n_input, n_output, criterion=criterion)
+        self.dropout = torch.nn.Dropout(drop_rate)
+        self.classifier = torch.nn.Linear(n_input, n_output)
+
+    def forward(self, x):
+        logits = self.classifier(self.dropout(x))
+        final_logits = torch.sigmoid(logits)
+        return final_logits
+
+
 class DebertaClass(torch.nn.Module):
     # https://github.com/huggingface/transformers/blob/master/src/transformers/models/deberta/modeling_deberta.py
     def __init__(self, output_size, drop_rate=0.2):
@@ -77,7 +89,8 @@ class DebertaClass(torch.nn.Module):
         encoder_layer = outputs.last_hidden_state[:, 0]
         droped_output = self.dropout(encoder_layer)
         logits = self.classifier(droped_output)
-        return logits  # encoder_layer.view(-1)
+        return logits
+        # return encoder_layer.view(-1)
 
 
 def evaluate(model, val_loader):
