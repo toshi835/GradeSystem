@@ -99,7 +99,7 @@ def train(args):
                     epoch + 1, train_loss, val_loss, val_acc))
             loss_history.append(train_loss)
 
-            if (epoch + 1) % 5000 == 0:
+            if (epoch + 1) % args.save_epoch == 0:
                 torch.save(model.state_dict(),
                            f'{args.model}_epoch{epoch + 1}.pth')
 

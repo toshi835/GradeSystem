@@ -37,6 +37,7 @@ if __name__ == "__main__":
     parser.add_argument('-clf', default="mlp", choices=["mlp", "lr", "bert"])
     parser.add_argument('-gpus', default=0, type=int)
     parser.add_argument('-epoch', default=3000, type=int)
+    parser.add_argument('-save_epoch', default=5000, type=int)
     parser.add_argument('-lr', default=2e-5, type=float)
     parser.add_argument('-model', default="../models/essay/test.pth")
     parser.add_argument('-wi', default=False, type=bool)
