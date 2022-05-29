@@ -25,10 +25,11 @@ for data_type, path in zip(data_types, paths):
     for file in files:
         with open(file, "r") as f:
             text = f.read()
+            text_replaced=text
             for un_wo, tr_wo in uncount_words:
-                text = text.replace(un_wo, tr_wo)
+                text_replaced = text_replaced.replace(un_wo, tr_wo)
             #sens = text.strip().split("\n")
-            sens = list(filter(lambda x: x.strip(), text.split('\n')))
+            sens = list(filter(lambda x: x.strip(), text_replaced.split('\n')))
             num_sen.append(len(sens))
             # if len(sens) < 5:
             #    print(text)
@@ -36,7 +37,7 @@ for data_type, path in zip(data_types, paths):
             for sen in sens:
                 if sen == "":
                     continue
-                words = sen.strip().split(" ")
+                words = sen.strip().split()
                 num_words.append(len(words))
 
     print("----------Static Information----------")

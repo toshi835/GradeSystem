@@ -1,3 +1,15 @@
+---
+marp: true
+author: kawamoto toshiki
+header: ---
+footer: toshiki kawamoto
+theme: default
+paginate: true
+headingDivider: 2
+size: 16:9
+math: katex
+---
+
 # GradeSystem
 
 ## Data

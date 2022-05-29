@@ -77,20 +77,41 @@ class Linear(MLP):
 
 class DebertaClass(torch.nn.Module):
     # https://github.com/huggingface/transformers/blob/master/src/transformers/models/deberta/modeling_deberta.py
-    def __init__(self, output_size, drop_rate=0.2):
+    def __init__(self, output_size, drop_rate=0.2, feature_length=0):
         super().__init__()
         self.deberta = DebertaModel.from_pretrained('microsoft/deberta-base')
         self.dropout = torch.nn.Dropout(drop_rate)
 
-        self.classifier = torch.nn.Linear(768, int(output_size))
+        #self.hidden = torch.nn.Linear(768+feature_length, 1024)  # mlp
+        # self.classifier = torch.nn.Linear(1024, int(output_size))  # mlp
+        self.classifier = torch.nn.Linear(768+feature_length, int(output_size))
+        self.feature_length = feature_length
 
-    def forward(self, ids, mask):
+    def forward(self, ids, mask, feature=None):
         outputs = self.deberta(ids, attention_mask=mask)
         encoder_layer = outputs.last_hidden_state[:, 0]
         droped_output = self.dropout(encoder_layer)
-        logits = self.classifier(droped_output)
+        if self.feature_length:
+            logits = self.classifier(torch.cat((droped_output, feature), 1))
+        else:
+            logits = self.classifier(droped_output)
         return logits
         # return encoder_layer.view(-1)
+    """
+    # mlp
+    def forward(self, ids, mask, feature=None):
+        outputs = self.deberta(ids, attention_mask=mask)
+        encoder_layer = outputs.last_hidden_state[:, 0]
+        droped_output = self.dropout(encoder_layer)
+
+        if self.feature_length:
+            h1 = self.hidden(torch.cat((droped_output, feature), 1))
+        else:
+            h1 = self.hidden(droped_output)
+        h2 = torch.relu(h1)
+        logits = self.classifier(h2)
+        return logits
+    """
 
 
 def evaluate(model, val_loader):
@@ -99,7 +120,7 @@ def evaluate(model, val_loader):
     return model.validation_epoch_end(outputs)
 
 
-def calculate_loss_and_accuracy(model, criterion, loader, gpus):
+def calculate_loss_and_accuracy(model, criterion, loader, gpus, is_ordinal_regression=False, use_feature=False):
     """ 損失・正解率を計算"""
     model.eval()
     loss = 0.0
@@ -111,17 +132,27 @@ def calculate_loss_and_accuracy(model, criterion, loader, gpus):
             ids = data['ids'].cuda(gpus)
             mask = data['mask'].cuda(gpus)
             labels = data['labels'].cuda(gpus)
+            argmax_labels = torch.argmax(labels, dim=-1).cpu().numpy()
+            feature = None
+            if use_feature:
+                feature = data['feature'].cuda(gpus)
 
             # 順伝播
-            outputs = model.forward(ids, mask)
+            outputs = model.forward(ids, mask, feature)
 
             # 損失計算
+            if is_ordinal_regression:
+                labels = torch.rot90(torch.cumsum(
+                    torch.rot90(labels, 2), dim=1), 2)
             loss += criterion(outputs, labels).item()
 
             # バッチサイズの長さの予測ラベル配列
+            if is_ordinal_regression:
+                rolled = torch.roll(outputs, shifts=-1, dims=1)
+                rolled.T[-1] = torch.zeros(len(outputs), device=gpus)
+                outputs = outputs-rolled
             pred = torch.argmax(outputs, dim=-1).cpu().numpy()
-            labels = torch.argmax(labels, dim=-1).cpu().numpy()
-            total += len(labels)
-            correct += (pred == labels).sum().item()
+            total += len(argmax_labels)
+            correct += (pred == argmax_labels).sum().item()
 
     return loss / len(loader), correct / total

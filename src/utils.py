@@ -1,11 +1,10 @@
-import collections
 import numpy as np
 import json
 import torch
 from torch.utils.data import Dataset
 
 
-def show_output(grade, stats, word_diff, grmitem):
+def show_output(grade, stats=[], word_diff=[], grmitem=[]):
     grade_class = {1: 'A1', 2: 'A2', 3: 'B1', 4: 'B2', 5: 'C1'}
     output_dic = dict()
     output_dic['grade'] = grade_class[grade[0]]
@@ -59,12 +58,14 @@ def data_loader(mode, FEA_PATH="", EMBED_PATH="", wo_ngram=False):
 
 
 class CreateDataset(Dataset):
-    def __init__(self, file_path):
+    def __init__(self, file_path, feature_file_path="", gec_file_path=""):
         self.file_path = file_path
+        self.feature_file_path = feature_file_path
+        self.gec_file_path = gec_file_path
         self.x = []
         self.y = []
+        self.feature = []
 
-        print("Loading from {}".format(self.file_path))
         self._build()
         self.split_num = len(self.y[0])
 
@@ -72,13 +73,22 @@ class CreateDataset(Dataset):
         return len(self.y)
 
     def __getitem__(self, index):  # Dataset[index]で返す値を指定
-        return {
-            'ids': self.x[index]['input_ids'],
-            'mask': self.x[index]['attention_mask'],
-            'labels': self.y[index]
-        }
+        if self.feature_file_path:
+            return {
+                'ids': self.x[index]['input_ids'],
+                'mask': self.x[index]['attention_mask'],
+                'feature': self.feature[index],
+                'labels': self.y[index]
+            }
+        else:
+            return {
+                'ids': self.x[index]['input_ids'],
+                'mask': self.x[index]['attention_mask'],
+                'labels': self.y[index]
+            }
 
     def _build(self):
+        print("Loading from {}".format(self.file_path))
         with open(self.file_path, "r") as f_json:
             for line in f_json:
                 df = json.loads(line)
@@ -88,3 +98,22 @@ class CreateDataset(Dataset):
 
                 self.x.append(inp)
                 self.y.append(tar)
+
+        if self.feature_file_path:
+            if not self.gec_file_path:
+                print("Loading from {}".format(self.feature_file_path))
+                with open(self.feature_file_path, "r") as f_csv:
+                    for line in f_csv:
+                        lines = list(map(float, line.split(",")))
+                        self.feature.append(torch.tensor(lines))
+            else:  # use_gec
+                print("Loading from {} and {}".format(
+                    self.feature_file_path, self.gec_file_path))
+                with open(self.feature_file_path, "r") as f_csv, open(self.gec_file_path, "r") as f_gec:
+                    for line_csv, line_gec in zip(f_csv, f_gec):
+                        lines = list(map(float, line_csv.split(","))) + \
+                            list(map(float, line_gec.split(",")))
+                        self.feature.append(torch.tensor(lines))
+
+            assert len(self.x) == len(self.feature) == len(self.y)
+            print("Loading finished")

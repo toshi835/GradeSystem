@@ -13,6 +13,8 @@ def main(args):
             train_bert(args)
         elif args.mode == 'test':
             test_bert(args)
+        elif args.mode == 'test_raw':
+            test_raw(args)
     else:
         if args.mode == 'prepro':
             preprocess(args)
@@ -40,9 +42,11 @@ if __name__ == "__main__":
     parser.add_argument('-save_epoch', default=5000, type=int)
     parser.add_argument('-lr', default=2e-5, type=float)
     parser.add_argument('-model', default="../models/essay/test.pth")
-    parser.add_argument('-wi', default=False, type=bool)
-    parser.add_argument('-wo_ngram', default=False, type=bool)
-    parser.add_argument('-embed', default=False, type=bool)
-    parser.add_argument('-feature', default=False, type=bool)
+    parser.add_argument('-wi', action='store_true')
+    parser.add_argument('-wo_ngram', action='store_true')
+    parser.add_argument('-embed', action='store_true')
+    parser.add_argument('-feature', action='store_true')
+    parser.add_argument('-ordinal_regression', '-or', action='store_true')
+    parser.add_argument('-input', default="../test_essay.txt")
     args = parser.parse_args()
     main(args)

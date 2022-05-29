@@ -139,24 +139,37 @@ def train(args):
 def train_bert(args):
     if args.data == "textbook":
         PATH = "../textbook/paragraph/train_bert/"
+        FEA_PATH = "../textbook/paragraph/"
     elif args.data == "wi":
         PATH = '../essay/wi+locness/train_bert/'
-    # elif args.gec in ["nn", "stat"]:
-    #    PATH = f'../essay/train_{args.gec}gec/'
-    # elif args.gec == "correct":
-    #    PATH = '../essay/train_correct/'
+        FEA_PATH = "../essay/wi+locness/"
     else:
         PATH = '../essay/train_bert/'
+        FEA_PATH = "../essay/"
 
-    dataset_train = CreateDataset(PATH+"train.json")
-    dataset_dev = CreateDataset(PATH+"dev.json")
+    GEC_PATH = ""
+    if args.gec in ["nn", "stat"]:
+        GEC_PATH = f'../essay/train_{args.gec}gec/'
+    elif args.gec == "correct":
+        GEC_PATH = '../essay/train_correct/'
+
+    dataset_train = CreateDataset(PATH+"train.json",
+                                  feature_file_path=FEA_PATH+"train/train.csv" if args.feature else "",
+                                  gec_file_path=GEC_PATH+"train.csv" if GEC_PATH else "")
+    dataset_dev = CreateDataset(PATH+"dev.json",
+                                feature_file_path=FEA_PATH+"train/dev.csv" if args.feature else "",
+                                gec_file_path=GEC_PATH+"dev.csv" if GEC_PATH else "")
 
     split_num = dataset_train.split_num
-    model = DebertaClass(split_num)
+    if args.feature:
+        model = DebertaClass(split_num, feature_length=len(
+            dataset_train[0]["feature"]))
+    else:
+        model = DebertaClass(split_num)
     num_parameters = sum(pa.numel() for pa in model.parameters())
     print("number of parameter is", num_parameters)
     print(model)
-
+    
     criterion = torch.nn.BCEWithLogitsLoss()  # sigmoid+BCEloss(交差エントロピー)
 
     optimizer = torch.optim.AdamW(
@@ -215,13 +228,19 @@ def train_bert(args):
             ids = data['ids'].cuda(args.gpus)
             mask = data['mask'].cuda(args.gpus)
             labels = data['labels'].cuda(args.gpus)
+            feature = None
+            if args.feature:
+                feature = data['feature'].cuda(args.gpus)
 
             # 勾配をゼロで初期化
             optimizer.zero_grad()
 
             # 順伝播 + 誤差逆伝播 + 重み更新
             with autocast(enabled=True):
-                outputs = model.forward(ids, mask)
+                outputs = model.forward(ids, mask, feature)
+                if args.ordinal_regression:  # 順序回帰に変更
+                    labels = torch.rot90(torch.cumsum(
+                        torch.rot90(labels, 2), dim=1), 2)
                 loss = criterion(outputs, labels)
 
             scaler.scale(loss).backward()
@@ -230,9 +249,9 @@ def train_bert(args):
 
         # 損失と正解率の算出
         loss_train, acc_train = calculate_loss_and_accuracy(
-            model, criterion, train_loader, args.gpus)
+            model, criterion, train_loader, args.gpus, is_ordinal_regression=args.ordinal_regression, use_feature=args.feature)
         loss_valid, acc_valid = calculate_loss_and_accuracy(
-            model, criterion, valid_loader, args.gpus)
+            model, criterion, valid_loader, args.gpus, is_ordinal_regression=args.ordinal_regression, use_feature=args.feature)
         log_train.append([loss_train, acc_train])
         log_valid.append([loss_valid, acc_valid])
 
