@@ -59,9 +59,9 @@ def data_loader(mode, FEA_PATH="", EMBED_PATH="", wo_ngram=False):
 
 class CreateDataset(Dataset):
     def __init__(self, file_path, feature_file_path="", gec_file_path=""):
-        self.file_path = file_path
-        self.feature_file_path = feature_file_path
-        self.gec_file_path = gec_file_path
+        self.file_path = file_path  # src_ids
+        self.feature_file_path = feature_file_path  # feature
+        self.gec_file_path = gec_file_path  # gec_feature
         self.x = []
         self.y = []
         self.feature = []
@@ -104,14 +104,14 @@ class CreateDataset(Dataset):
                 print("Loading from {}".format(self.feature_file_path))
                 with open(self.feature_file_path, "r") as f_csv:
                     for line in f_csv:
-                        lines = list(map(float, line.split(",")))
+                        lines = list(map(float, line.split(",")))[:-1]
                         self.feature.append(torch.tensor(lines))
             else:  # use_gec
                 print("Loading from {} and {}".format(
                     self.feature_file_path, self.gec_file_path))
                 with open(self.feature_file_path, "r") as f_csv, open(self.gec_file_path, "r") as f_gec:
                     for line_csv, line_gec in zip(f_csv, f_gec):
-                        lines = list(map(float, line_csv.split(","))) + \
+                        lines = list(map(float, line_csv.split(",")))[:-1] + \
                             list(map(float, line_gec.split(",")))
                         self.feature.append(torch.tensor(lines))
 

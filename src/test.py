@@ -129,7 +129,6 @@ def test_bert(args):
     print("confusion matrix:")
     print(confusion_matrix(golds, preds))
 
-
 def test_raw(args):  # lr w/o GECのみ可能
     start_time = time.time()
     if args.clf == "lr":
@@ -167,6 +166,7 @@ def test_raw(args):  # lr w/o GECのみ可能
         grm, pos_ngram, grm_freq = grmitem.features()
         inputs = Feature(ngram=ngram, pos_ngram=pos_ngram,
                          grmitem=grm, word_difficulty=diff, stats=stats).concat()
+
         preprocessed_time = time.time()
         print("preprocessed time: {:.2f}s".format(
             preprocessed_time-start_time))
