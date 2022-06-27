@@ -129,6 +129,7 @@ def test_bert(args):
     print("confusion matrix:")
     print(confusion_matrix(golds, preds))
 
+
 def test_raw(args):  # lr w/o GECのみ可能
     start_time = time.time()
     if args.clf == "lr":
