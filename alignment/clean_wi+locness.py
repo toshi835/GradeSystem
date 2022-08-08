@@ -1,7 +1,8 @@
-import json
 import glob
-import re
+import json
 import os
+import re
+
 PATH = "/home/lr/kawamoto/m1/GradeSystem/essay/wi+locness/"
 files = glob.glob(
     PATH+'json/*.json')

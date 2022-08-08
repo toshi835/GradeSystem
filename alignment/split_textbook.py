@@ -1,6 +1,6 @@
 # textbookを分割する
-from email.policy import default
 import glob
+from email.policy import default
 
 ranks = ["A1", "A2", "B1", "B2", "C1", "C2"]
 all_files = [glob.glob("../textbook/raw/***_{}.raw".format(rank))

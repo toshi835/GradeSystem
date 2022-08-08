@@ -1,13 +1,13 @@
-import collections
 import glob
-import random
-import math
 import json
-import torch
-from tqdm import tqdm
+import math
 import os
+import random
 
-from prepro_utils import Surface, GrmItem, Feature, Feature_gec, extract_dp_sentence, get_gec_items
+import torch
+from prepro_utils import (Feature, Feature_gec, GrmItem, Surface,
+                          extract_dp_sentence, get_gec_items)
+from tqdm import tqdm
 
 random.seed(22)
 
@@ -61,7 +61,8 @@ def preprocess(args):
             ngram, stats, diff = Surface(original_text).features()
             pos_ngram = GrmItem(original_text).features()
             # 文法項目のinput
-            inputs = Feature_gec(ngram=ngram, pos_ngram=pos_ngram, grmitem=grmitem_feat, word_difficulty=diff,
+            inputs = Feature_gec(ngram=ngram, pos_ngram=pos_ngram,
+                                 grmitem=grmitem_feat, word_difficulty=diff,
                                  stats=stats, operations=operations_feat).concat()
 
             x.append(inputs)

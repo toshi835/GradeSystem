@@ -1,8 +1,8 @@
 import argparse
+from test import test, test_bert, test_raw
 
-from preprocess import preprocess, preprocess_bert, add_widata
+from preprocess import add_widata, preprocess, preprocess_bert
 from train import train, train_bert
-from test import test, test_raw, test_bert
 
 
 def main(args):

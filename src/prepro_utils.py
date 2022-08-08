@@ -1,9 +1,10 @@
 import re
+from collections import Counter, OrderedDict
+
+import numpy as np
 import regex
 import treetaggerwrapper
-import numpy as np
 from nltk.tokenize import sent_tokenize
-from collections import Counter, OrderedDict
 
 # 何回も呼ぶと遅いので
 tagger = treetaggerwrapper.TreeTagger(
@@ -393,8 +394,6 @@ def detect_operate_pos(ori_sen, gec_sen, dp_sen):
     #ori_pos_list = [x.split('\t')[1] for x in ori_tagged]
     #gec_pos_list = [x.split('\t')[1] for x in gec_tagged]
 
-    dp_sen = dp_sen.replace('<msf crr', '<msfcrr')
-
     # add/msf/oms_word = タグ付き<add>xxx</add>
     # 中身と単語を特定（機能語なら単語，内容語なら品詞）したい
     # add:gec後の文章から抽出する
@@ -490,14 +489,20 @@ def get_gec_items(original, gec_out, aligned):
     operation_features = []
     grmitem_features = []
     for ori_sen, gec_sen, dp_sen in zip(original, gec_out, aligned):
+        dp_sen = dp_sen.replace('<msf crr', '<msfcrr')
         original_text += ori_sen.capitalize() + ' '
         # 内容語品詞dic, 機能語単語dic, 機能語品詞リスト
-        operations = detect_operate_pos(ori_sen, gec_sen, dp_sen)
+        operations = detect_operate_pos(
+            ori_sen, gec_sen, dp_sen)  # [726, 704, 702]
         operation_features.extend(operations)
 
         use_grm = GrmItem_gec(str(ori_sen), str(
-            gec_sen), str(dp_sen)).compare()
+            gec_sen), str(dp_sen)).compare()  # [143, 350, 880, 888]
         grmitem_features.extend(use_grm)
+    # e.g.
+    # operation_features: [211, 726, 704, 702, 702, 484, 702, 699]
+    # grmitem_features: [21, 37, 38, 41, 57, 107, 111, 115, 143, 219, 269, 333, 350, 352, 361, 379, 385, 588, 592, 656, 748, 810, 822, 863, 876, 888]
+
     # 頻度でまとめる
     operations_feat = dict(Counter(operation_features))
     grmitem_feat = dict(Counter(grmitem_features))

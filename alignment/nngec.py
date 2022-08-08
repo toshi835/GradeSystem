@@ -1,5 +1,5 @@
-import os
 import glob
+import os
 
 # PATH = "/home/lr/kawamoto/m1/GradeSystem/essay/"
 PATH = "/home/lr/kawamoto/m1/GradeSystem/essay/wi+locness/"

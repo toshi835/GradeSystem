@@ -1,5 +1,6 @@
-import numpy as np
 import json
+
+import numpy as np
 import torch
 from torch.utils.data import Dataset
 
@@ -100,20 +101,12 @@ class CreateDataset(Dataset):
                 self.y.append(tar)
 
         if self.feature_file_path:
-            if not self.gec_file_path:
-                print("Loading from {}".format(self.feature_file_path))
-                with open(self.feature_file_path, "r") as f_csv:
-                    for line in f_csv:
-                        lines = list(map(float, line.split(",")))[:-1]
-                        self.feature.append(torch.tensor(lines))
-            else:  # use_gec
-                print("Loading from {} and {}".format(
-                    self.feature_file_path, self.gec_file_path))
-                with open(self.feature_file_path, "r") as f_csv, open(self.gec_file_path, "r") as f_gec:
-                    for line_csv, line_gec in zip(f_csv, f_gec):
-                        lines = list(map(float, line_csv.split(",")))[:-1] + \
-                            list(map(float, line_gec.split(",")))
-                        self.feature.append(torch.tensor(lines))
+            print("Loading from {}".format(
+                self.gec_file_path if self.gec_file_path else self.feature_file_path))
+            with open(self.gec_file_path if self.gec_file_path else self.feature_file_path, "r") as f_csv:
+                for line in f_csv:
+                    lines = list(map(float, line.split(",")))[:-1]
+                    self.feature.append(torch.tensor(lines))
 
             assert len(self.x) == len(self.feature) == len(self.y)
             print("Loading finished")
