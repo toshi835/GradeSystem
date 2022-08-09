@@ -8,7 +8,8 @@ from nltk.tokenize import sent_tokenize
 
 # 何回も呼ぶと遅いので
 tagger = treetaggerwrapper.TreeTagger(
-    TAGLANG='en', TAGDIR='/home/lr/hayashi/ra_web_app')
+    TAGLANG="en", TAGDIR="/home/lr/hayashi/ra_web_app"
+)
 
 
 # 表層情報
@@ -20,10 +21,13 @@ class Surface:
         self.sen_length = len(self.sentences)
         # remove symbol
         self.rm_symbol_sentences = [
-            re.sub("[!-/:-@[-`{-~]", "", sentence) for sentence in self.sentences]
-        self.prop_sentences = [str(re.sub(r"([+-]?[0-9]+\.?[0-9]*)", "NUM", sentence)) for sentence in
-                               self.rm_symbol_sentences]
-        self.prop_words = ' '.join(self.prop_sentences).split()
+            re.sub("[!-/:-@[-`{-~]", "", sentence) for sentence in self.sentences
+        ]
+        self.prop_sentences = [
+            str(re.sub(r"([+-]?[0-9]+\.?[0-9]*)", "NUM", sentence))
+            for sentence in self.rm_symbol_sentences
+        ]
+        self.prop_words = " ".join(self.prop_sentences).split()
         self.total_words = len(self.prop_words)
         self.word_types = set(self.prop_words)
 
@@ -39,7 +43,9 @@ class Surface:
         self.fun_words = []
         self.diff_words = []
 
-        with open(self.a1) as fa1, open(self.a2) as fa2, open(self.b1) as fb1, open(self.fun) as ffn:
+        with open(self.a1) as fa1, open(self.a2) as fa2, open(self.b1) as fb1, open(
+            self.fun
+        ) as ffn:
             for a1w in fa1:
                 self.a1_words.append(a1w.lower().split()[0])
                 self.diff_words.append(a1w.lower().split()[0])
@@ -54,27 +60,29 @@ class Surface:
                 self.diff_words.append(funw.lower().split()[0])
 
     def stats(self):
-        return [self.sen_length, self.total_words, float(len(self.word_types) / float(self.total_words))]
+        return [
+            self.sen_length,
+            self.total_words,
+            float(len(self.word_types) / float(self.total_words)),
+        ]
 
     def ngram(self):
         all_ngram = []
         for num in [1, 2]:
-            _ngrams = [list(zip(*(sentence.split()[i:] for i in range(num))))
-                       for sentence in self.prop_sentences]
+            _ngrams = [
+                list(zip(*(sentence.split()[i:] for i in range(num))))
+                for sentence in self.prop_sentences
+            ]
             ngrams = [flat for inner in _ngrams for flat in inner]
             all_ngram.extend(set(ngrams))
         return Counter(all_ngram)
 
     def word_difficulty(self):
         """!!!要修正!!!"""
-        a1_ratio = len(self.word_types & set(self.a1_words)) / \
-            float(self.total_words)
-        a2_ratio = len(self.word_types & set(self.a2_words)) / \
-            float(self.total_words)
-        b1_ratio = len(self.word_types & set(self.b1_words)) / \
-            float(self.total_words)
-        fun_ratio = len(self.word_types & set(
-            self.fun_words)) / float(self.total_words)
+        a1_ratio = len(self.word_types & set(self.a1_words)) / float(self.total_words)
+        a2_ratio = len(self.word_types & set(self.a2_words)) / float(self.total_words)
+        b1_ratio = len(self.word_types & set(self.b1_words)) / float(self.total_words)
+        fun_ratio = len(self.word_types & set(self.fun_words)) / float(self.total_words)
 
         return [a1_ratio, a2_ratio, b1_ratio, fun_ratio]
 
@@ -92,26 +100,26 @@ class GrmItem:
         # 小文字にすると拾えない
         self.sentences = sent_tokenize(self.text)
         self.tagged = [tagger.TagText(sentence) for sentence in self.sentences]
-        self.parsed = [' '.join(sentence).replace('\t', '_')
-                       for sentence in self.tagged]
+        self.parsed = [
+            " ".join(sentence).replace("\t", "_") for sentence in self.tagged
+        ]
 
         # 文法項目の読み込み
         self.grmlist = []
         self.num_grm_dic = {}
         self.num_list_dic = {}
-        with open('../dat/grmitem.txt', 'r') as f:
+        with open("../dat/grmitem.txt", "r") as f:
             for num, i in enumerate(f, 1):
-                self.grmlist.append(i.rstrip().split('\t')[1])
-                self.num_grm_dic[num] = i.rstrip().split('\t')[1]
-                self.num_list_dic[num] = i.rstrip().split('\t')[0]
+                self.grmlist.append(i.rstrip().split("\t")[1])
+                self.num_grm_dic[num] = i.rstrip().split("\t")[1]
+                self.num_list_dic[num] = i.rstrip().split("\t")[0]
 
     def detect(self, grmlist, itemslist):
         grm_dic = {}
         use_item = []
         for num, grm in enumerate(grmlist, 1):
             try:
-                _grm_freq = [regex.findall(grm, sentence)
-                             for sentence in self.parsed]
+                _grm_freq = [regex.findall(grm, sentence) for sentence in self.parsed]
                 grm_freq = [flat for inner in _grm_freq for flat in inner]
                 if len(grm_freq) != 0:
                     grm_dic[num] = len(grm_freq)
@@ -127,16 +135,18 @@ class GrmItem:
         for sentence in self.tagged:
             try:
                 for word in sentence:
-                    _tmp.append(str(word.split('\t')[1]))
-                pos_list.append(' '.join(_tmp))
+                    _tmp.append(str(word.split("\t")[1]))
+                pos_list.append(" ".join(_tmp))
             except:
                 pass
             _tmp = []
 
         all_pos_ngrams = []
         for num in [1, 2]:
-            _pos_ngrams = [list(zip(*(sentence.split()[i:]
-                                for i in range(num)))) for sentence in pos_list]
+            _pos_ngrams = [
+                list(zip(*(sentence.split()[i:] for i in range(num))))
+                for sentence in pos_list
+            ]
             pos_ngrams = [flat for inner in _pos_ngrams for flat in inner]
             all_pos_ngrams.extend(pos_ngrams)
 
@@ -147,7 +157,7 @@ class GrmItem:
         pos_ngram = self.pos_ngram()
         for k, v in grmitem.items():
             if v == 0:
-                del (grmitem[k])
+                del grmitem[k]
 
         return grmitem, pos_ngram, use_list
 
@@ -164,19 +174,28 @@ class GrmItem_gec(GrmItem):
         self.tagged = tagger.TagText(self.text)
         self.tagged_gec = tagger.TagText(self.gec)
         self.parsed = [
-            ' '.join(self.tagged).replace('\t', '_').replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')]
+            " ".join(self.tagged)
+            .replace("\t", "_")
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+        ]
         self.parsed_gec = [
-            ' '.join(self.tagged_gec).replace('\t', '_').replace('&', '&amp;').replace('<', '&lt;').replace('>',
-                                                                                                            '&gt;')]
+            " ".join(self.tagged_gec)
+            .replace("\t", "_")
+            .replace("&", "&amp;")
+            .replace("<", "&lt;")
+            .replace(">", "&gt;")
+        ]
         # 文法項目の読み込み
         self.grmlist = []
         self.num_grm_dic = {}
         self.num_list_dic = {}
-        with open('../dat/grmitem.txt', 'r') as f:
+        with open("../dat/grmitem.txt", "r") as f:
             for num, i in enumerate(f, 1):
-                self.grmlist.append(i.rstrip().split('\t')[1])
-                self.num_grm_dic[num] = i.rstrip().split('\t')[1]
-                self.num_list_dic[num] = i.rstrip().split('\t')[0]
+                self.grmlist.append(i.rstrip().split("\t")[1])
+                self.num_grm_dic[num] = i.rstrip().split("\t")[1]
+                self.num_list_dic[num] = i.rstrip().split("\t")[0]
 
     def compare(self):
         # grmlist(correct, error) * 2
@@ -214,7 +233,9 @@ class GrmItem_gec(GrmItem):
 
 # 素性作成用
 class Feature:
-    def __init__(self, ngram={}, pos_ngram={}, grmitem={}, word_difficulty={}, stats={}):
+    def __init__(
+        self, ngram={}, pos_ngram={}, grmitem={}, word_difficulty={}, stats={}
+    ):
         self.ngram = ngram
         self.pos_ngram = pos_ngram
         self.grmitem = grmitem
@@ -223,9 +244,9 @@ class Feature:
         self.word_dic = {}
         self.pos_dic = {}
         for line in open("../dat/word_essay.dat", "r"):
-            self.word_dic[line.split('\t')[1]] = line.split('\t')[0]
+            self.word_dic[line.split("\t")[1]] = line.split("\t")[0]
         for line in open("../dat/pos_essay.dat", "r"):
-            self.pos_dic[line.split('\t')[1]] = line.split('\t')[0]
+            self.pos_dic[line.split("\t")[1]] = line.split("\t")[0]
 
     def ngram2vec(self):
         # order: [ngram(26591), pos_ngram(7933), grm_item(501), word_difficulty(4)] -> 35029
@@ -233,29 +254,31 @@ class Feature:
         # word ngram
         for feature in self.ngram:
             if str(feature) in self.word_dic:
-                fdic[int(self.word_dic[str(feature)]) -
-                     1] = self.ngram[feature] / float(self.stats[1])
+                fdic[int(self.word_dic[str(feature)]) - 1] = self.ngram[
+                    feature
+                ] / float(self.stats[1])
             else:
                 pass
 
         # pos ngram
         for feature in self.pos_ngram:
             if str(feature) in self.pos_dic:
-                fdic[int(self.pos_dic[str(feature)]) - 1 + len(self.word_dic)] = self.pos_ngram[feature] / float(
-                    self.stats[1])
+                fdic[
+                    int(self.pos_dic[str(feature)]) - 1 + len(self.word_dic)
+                ] = self.pos_ngram[feature] / float(self.stats[1])
             else:
                 pass
 
         # grm item
         for key, value in self.grmitem.items():
-            fdic[int(key) - 1 + len(self.pos_dic) + len(self.word_dic)
-                 ] = value / float(self.stats[1])
+            fdic[int(key) - 1 + len(self.pos_dic) + len(self.word_dic)] = value / float(
+                self.stats[1]
+            )
 
         # word diff
         for number, feature in enumerate(self.word_difficulty, 0):
             # 501 is length of grm item
-            fdic[number + 501 + len(self.pos_dic) +
-                 len(self.word_dic)] = feature
+            fdic[number + 501 + len(self.pos_dic) + len(self.word_dic)] = feature
 
         return fdic
 
@@ -271,7 +294,15 @@ class Feature:
 
 
 class Feature_gec(Feature):
-    def __init__(self, ngram={}, pos_ngram={}, grmitem={}, word_difficulty={}, stats={}, operations={}):
+    def __init__(
+        self,
+        ngram={},
+        pos_ngram={},
+        grmitem={},
+        word_difficulty={},
+        stats={},
+        operations={},
+    ):
         self.ngram = ngram
         self.pos_ngram = pos_ngram
         self.grmitem = grmitem
@@ -283,17 +314,17 @@ class Feature_gec(Feature):
         self.operation_dic = {}
         with open("../dat/word_essay.dat", "r") as f:
             for line in f:
-                self.word_dic[line.split('\t')[1]] = line.split('\t')[0]
+                self.word_dic[line.split("\t")[1]] = line.split("\t")[0]
         with open("../dat/pos_essay.dat", "r") as f:
             for line in f:
-                self.pos_dic[line.split('\t')[1]] = line.split('\t')[0]
+                self.pos_dic[line.split("\t")[1]] = line.split("\t")[0]
         with open("../dat/treetagger_feature.dat", "r") as f:
             for num, line in enumerate(f, 1):
-                self.operation_dic[num] = line.rstrip() + '(余剰)'
+                self.operation_dic[num] = line.rstrip() + "(余剰)"
             for num, line in enumerate(f, 245):
-                self.operation_dic[num] = line.rstrip() + '(脱落)'
+                self.operation_dic[num] = line.rstrip() + "(脱落)"
             for num, line in enumerate(f, 489):
-                self.operation_dic[num] = line.rstirip() + '(置換)'
+                self.operation_dic[num] = line.rstirip() + "(置換)"
 
     # grmitemが誤り対応，操作
     def ngram2vec(self):
@@ -302,41 +333,45 @@ class Feature_gec(Feature):
         # word ngram
         for feature in self.ngram:
             if str(feature) in self.word_dic:
-                fdic[int(self.word_dic[str(feature)]) -
-                     1] = self.ngram[feature] / float(self.stats[1])
+                fdic[int(self.word_dic[str(feature)]) - 1] = self.ngram[
+                    feature
+                ] / float(self.stats[1])
             else:
                 pass
 
         # pos ngram
         for feature in self.pos_ngram:
             if str(feature) in self.pos_dic:
-                fdic[int(self.pos_dic[str(feature)]) - 1 + len(self.word_dic)] = self.pos_ngram[feature] / float(
-                    self.stats[1])
+                fdic[
+                    int(self.pos_dic[str(feature)]) - 1 + len(self.word_dic)
+                ] = self.pos_ngram[feature] / float(self.stats[1])
             else:
                 pass
 
         # grm item(501種類)*4 に投げるようにする
         # ただし
         for key, value in self.grmitem.items():
-            fdic[int(key) - 1 + len(self.pos_dic) + len(self.word_dic)
-                 ] = value / float(self.stats[1])
+            fdic[int(key) - 1 + len(self.pos_dic) + len(self.word_dic)] = value / float(
+                self.stats[1]
+            )
 
         # 誤り操作
         for key, value in self.operations.items():
-            fdic[key - 1 + len(self.pos_dic) + len(self.word_dic) +
-                 501 * 2] = value / float(self.stats[1])
+            fdic[
+                key - 1 + len(self.pos_dic) + len(self.word_dic) + 501 * 2
+            ] = value / float(self.stats[1])
 
         # word diff
         for number, feature in enumerate(self.word_difficulty):
-            fdic[number + len(self.pos_dic) +
-                 len(self.word_dic) + 501 * 2 + 244 * 3] = feature
+            fdic[
+                number + len(self.pos_dic) + len(self.word_dic) + 501 * 2 + 244 * 3
+            ] = feature
 
         return fdic
 
     def concat(self):
         ngrams = self.ngram2vec()
-        vec_size = len(self.pos_dic) + len(self.word_dic) + \
-            501 * 2 + 244 * 3 + 4
+        vec_size = len(self.pos_dic) + len(self.word_dic) + 501 * 2 + 244 * 3 + 4
         inputs = np.zeros([1, vec_size])
 
         for k, v in ngrams.items():
@@ -359,14 +394,14 @@ def detect_operate_pos(ori_sen, gec_sen, dp_sen):
     # 機能語品詞読み込み（treetagger:21種類)
     # 機能語だったら弾くのでリスト
     function_pos = []
-    with open('../dat/treetagger_function.list', 'r') as f:
+    with open("../dat/treetagger_function.list", "r") as f:
         for function_pos_word in f:
             function_pos.append(function_pos_word.rstrip())
 
     # 内容語読み込み（treetagger:37種類）
     # 素性として振り分けるのでdic
     content_dic = {}
-    with open('../dat/treetagger_content.list', 'r') as f:
+    with open("../dat/treetagger_content.list", "r") as f:
         for num, i in enumerate(f):
             content_dic[str(i.rstrip())] = str(num + 1)
 
@@ -391,8 +426,8 @@ def detect_operate_pos(ori_sen, gec_sen, dp_sen):
         if len(sp) > 1:
             gec_pos_list.append(sp[1])
 
-    #ori_pos_list = [x.split('\t')[1] for x in ori_tagged]
-    #gec_pos_list = [x.split('\t')[1] for x in gec_tagged]
+    # ori_pos_list = [x.split('\t')[1] for x in ori_tagged]
+    # gec_pos_list = [x.split('\t')[1] for x in gec_tagged]
 
     # add/msf/oms_word = タグ付き<add>xxx</add>
     # 中身と単語を特定（機能語なら単語，内容語なら品詞）したい
@@ -400,11 +435,11 @@ def detect_operate_pos(ori_sen, gec_sen, dp_sen):
     ori_w_tag = []
     gec_w_tag = []
     for word in dp_sen.split():
-        if '<add>' in word:
+        if "<add>" in word:
             gec_w_tag.append(word)
-        elif '<oms>' in word:
+        elif "<oms>" in word:
             ori_w_tag.append(word)
-        elif '<msrcrr' in word:
+        elif "<msrcrr" in word:
             ori_w_tag.append(word)
             gec_w_tag.append(word)
         else:
@@ -418,7 +453,7 @@ def detect_operate_pos(ori_sen, gec_sen, dp_sen):
     # オリジナル（oms)
     out_list = []
     for ori_word, ori_tag_word, ori_pos in zip(ori_sen_list, ori_w_tag, ori_pos_list):
-        if '<oms>' in ori_tag_word:
+        if "<oms>" in ori_tag_word:
             # 機能語であれば単語
             if ori_pos in function_pos:
                 if ori_word.lower() in function_dic.keys():
@@ -432,29 +467,31 @@ def detect_operate_pos(ori_sen, gec_sen, dp_sen):
     # gec後（add, msf)
     # msf(置換）は修正後のものを採用
     for gec_word, gec_tag_word, gec_pos in zip(gec_sen_list, gec_w_tag, gec_pos_list):
-        if '<add>' in gec_tag_word:
+        if "<add>" in gec_tag_word:
             # 機能語であれば単語
             if gec_pos in function_pos:
                 if gec_word.lower() in function_dic.keys():
-                    out_list.append(
-                        int(function_dic[gec_word.lower()]) + feature_len)
+                    out_list.append(int(function_dic[gec_word.lower()]) + feature_len)
             # 内容語
             elif gec_pos in content_dic.keys():
                 out_list.append(
-                    int(content_dic[gec_pos]) + len(function_dic) + feature_len)
+                    int(content_dic[gec_pos]) + len(function_dic) + feature_len
+                )
             else:
                 pass
 
-        if '<msfcrr' in gec_tag_word:
+        if "<msfcrr" in gec_tag_word:
             # 機能語であれば単語
             if gec_pos in function_pos:
                 if gec_word.lower() in function_dic.keys():
                     out_list.append(
-                        int(function_dic[gec_word.lower()]) + 2 * feature_len)
+                        int(function_dic[gec_word.lower()]) + 2 * feature_len
+                    )
             # 内容語
             elif gec_pos in content_dic.keys():
                 out_list.append(
-                    int(content_dic[gec_pos]) + len(function_dic) + 2 * feature_len)
+                    int(content_dic[gec_pos]) + len(function_dic) + 2 * feature_len
+                )
             else:
                 pass
 
@@ -485,19 +522,19 @@ def extract_dp_sentence(xml):  # xmlデータから入力，出力，アライ�
 
 def get_gec_items(original, gec_out, aligned):
     # 置換，脱落，余剰検出
-    original_text = ''
+    original_text = ""
     operation_features = []
     grmitem_features = []
     for ori_sen, gec_sen, dp_sen in zip(original, gec_out, aligned):
-        dp_sen = dp_sen.replace('<msf crr', '<msfcrr')
-        original_text += ori_sen.capitalize() + ' '
+        dp_sen = dp_sen.replace("<msf crr", "<msfcrr")
+        original_text += ori_sen.capitalize() + " "
         # 内容語品詞dic, 機能語単語dic, 機能語品詞リスト
-        operations = detect_operate_pos(
-            ori_sen, gec_sen, dp_sen)  # [726, 704, 702]
+        operations = detect_operate_pos(ori_sen, gec_sen, dp_sen)  # [726, 704, 702]
         operation_features.extend(operations)
 
-        use_grm = GrmItem_gec(str(ori_sen), str(
-            gec_sen), str(dp_sen)).compare()  # [143, 350, 880, 888]
+        use_grm = GrmItem_gec(
+            str(ori_sen), str(gec_sen), str(dp_sen)
+        ).compare()  # [143, 350, 880, 888]
         grmitem_features.extend(use_grm)
     # e.g.
     # operation_features: [211, 726, 704, 702, 702, 484, 702, 699]

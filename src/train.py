@@ -1,13 +1,22 @@
+import os
+
 import joblib
 import mord
 import numpy as np
 import torch
-from model import (MLP, DebertaClass, Linear, calculate_loss_and_accuracy,
-                   evaluate)
 from sklearn.metrics import accuracy_score, confusion_matrix, f1_score
 from torch.cuda.amp import GradScaler, autocast
 from torch.utils.data import DataLoader, TensorDataset
 from tqdm import tqdm
+
+from model import (
+    MLP,
+    DebertaClass,
+    Linear,
+    OnlineLabelSmoothing,
+    calculate_loss_and_accuracy,
+    evaluate,
+)
 from utils import CreateDataset, data_loader
 
 
@@ -18,21 +27,23 @@ def train(args):
         FEA_PATH = "../textbook/paragraph/train/" if args.feature else ""
         EMBED_PATH = "../textbook/paragraph/train_bert/" if args.embed else ""
     elif args.data == "wi":
-        FEA_PATH = '../essay/wi+locness/train/' if args.feature else ""
+        FEA_PATH = "../essay/wi+locness/train/" if args.feature else ""
         EMBED_PATH = "../essay/wi+locness/train_bert/" if args.embed else ""
     elif args.gec in ["nn", "stat"]:
-        FEA_PATH = f'../essay/train_{args.gec}gec/'  # if args.feature else ""
+        FEA_PATH = f"../essay/train_{args.gec}gec/"  # if args.feature else ""
     elif args.gec == "correct":
-        FEA_PATH = '../essay/train_correct/'  # if args.feature else ""
+        FEA_PATH = "../essay/train_correct/"  # if args.feature else ""
     else:
-        FEA_PATH = '../essay/train/' if args.feature else ""
+        FEA_PATH = "../essay/train/" if args.feature else ""
         EMBED_PATH = "../essay/train_bert/" if args.embed else ""
     assert FEA_PATH or EMBED_PATH
 
     x_train, y_train = data_loader(
-        mode="train", FEA_PATH=FEA_PATH, EMBED_PATH=EMBED_PATH, wo_ngram=args.wo_ngram)
+        mode="train", FEA_PATH=FEA_PATH, EMBED_PATH=EMBED_PATH, wo_ngram=args.wo_ngram
+    )
     x_dev, y_dev = data_loader(
-        mode="dev", FEA_PATH=FEA_PATH, EMBED_PATH=EMBED_PATH, wo_ngram=args.wo_ngram)
+        mode="dev", FEA_PATH=FEA_PATH, EMBED_PATH=EMBED_PATH, wo_ngram=args.wo_ngram
+    )
 
     # 使わない
     # if args.wi:
@@ -55,12 +66,12 @@ def train(args):
 
         if EMBED_PATH:  # deberta+素性 or DeBERTaの場合は線形結合層のみ
             model = Linear(
-                args, x_train.shape[1], split_num, criterion=torch.nn.MSELoss())
+                args, x_train.shape[1], split_num, criterion=torch.nn.MSELoss()
+            )
         else:
-            model = MLP(
-                args, x_train.shape[1], split_num, criterion=torch.nn.MSELoss())
+            model = MLP(args, x_train.shape[1], split_num, criterion=torch.nn.MSELoss())
 
-        print(model)
+        # print(model)
 
         # select device
         if torch.cuda.is_available():
@@ -94,13 +105,15 @@ def train(args):
 
             if (epoch + 1) % 10 == 0:
                 val_loss, val_acc = evaluate(model, valid_loader)
-                print("Epoch [{}], train_loss: {:.4f}, val_loss: {:.4f}, val_acc: {:.4f}".format(
-                    epoch + 1, train_loss, val_loss, val_acc))
+                print(
+                    "Epoch [{}], train_loss: {:.4f}, val_loss: {:.4f}, val_acc: {:.4f}".format(
+                        epoch + 1, train_loss, val_loss, val_acc
+                    )
+                )
             loss_history.append(train_loss)
 
             if (epoch + 1) % args.save_epoch == 0:
-                torch.save(model.state_dict(),
-                           f'{args.model}_epoch{epoch + 1}.pth')
+                torch.save(model.state_dict(), f"{args.model}_epoch{epoch + 1}.pth")
 
         model.eval()
         output = model.forward(x_dev)
@@ -116,7 +129,7 @@ def train(args):
         y_pred = torch.tensor(y_pred)
         y_dev = torch.tensor(y_true)
         # モデル書き出し
-        torch.save(model.state_dict(), args.model+".pth")
+        torch.save(model.state_dict(), args.model + ".pth")
 
     # lrの学習
     else:
@@ -125,12 +138,11 @@ def train(args):
         y_pred = clf.predict(x_dev)
 
         # モデル書き出し
-        joblib.dump(clf, open(args.model+".pkl", 'wb'))
+        joblib.dump(clf, open(args.model + ".pkl", "wb"))
 
     print()
     print("accuracy: {0:.4f}".format(accuracy_score(y_dev, y_pred)))
-    print("macro f1: {0:.4f}".format(
-        f1_score(y_dev, y_pred, average="macro")))
+    print("macro f1: {0:.4f}".format(f1_score(y_dev, y_pred, average="macro")))
     print("confusion matrix:")
     print(confusion_matrix(y_dev, y_pred))
 
@@ -140,39 +152,49 @@ def train_bert(args):
         PATH = "../textbook/paragraph/train_bert/"
         FEA_PATH = "../textbook/paragraph/"
     elif args.data == "wi":
-        PATH = '../essay/wi+locness/train_bert/'
+        PATH = "../essay/wi+locness/train_bert/"
         FEA_PATH = "../essay/wi+locness/"
     else:
-        PATH = '../essay/train_bert/'
+        PATH = "../essay/train_bert/"
         FEA_PATH = "../essay/"
 
     GEC_PATH = ""
     if args.gec in ["nn", "stat"]:
-        GEC_PATH = f'../essay/train_{args.gec}gec/'
+        GEC_PATH = f"../essay/train_{args.gec}gec/"
     elif args.gec == "correct":
-        GEC_PATH = '../essay/train_correct/'
+        GEC_PATH = "../essay/train_correct/"
 
-    dataset_train = CreateDataset(PATH+"train.json",
-                                  feature_file_path=FEA_PATH+"train/train.csv" if args.feature else "",
-                                  gec_file_path=GEC_PATH+"train.csv" if GEC_PATH else "")
-    dataset_dev = CreateDataset(PATH+"dev.json",
-                                feature_file_path=FEA_PATH+"train/dev.csv" if args.feature else "",
-                                gec_file_path=GEC_PATH+"dev.csv" if GEC_PATH else "")
+    dataset_train = CreateDataset(
+        PATH + "train.json",
+        feature_file_path=FEA_PATH + "train/train.csv" if args.feature else "",
+        gec_file_path=GEC_PATH + "train.csv" if GEC_PATH else "",
+    )
+    dataset_dev = CreateDataset(
+        PATH + "dev.json",
+        feature_file_path=FEA_PATH + "train/dev.csv" if args.feature else "",
+        gec_file_path=GEC_PATH + "dev.csv" if GEC_PATH else "",
+    )
 
     split_num = dataset_train.split_num
     if args.feature:
-        model = DebertaClass(split_num, feature_length=len(
-            dataset_train[0]["feature"]))
+        model = DebertaClass(split_num, feature_length=len(dataset_train[0]["feature"]))
     else:
         model = DebertaClass(split_num)
-    num_parameters = sum(pa.numel() for pa in model.parameters())
-    print("number of parameter is", num_parameters)
-    print(model)
-    
-    criterion = torch.nn.BCEWithLogitsLoss()  # sigmoid+BCEloss(交差エントロピー)
+    # num_parameters = sum(pa.numel() for pa in model.parameters())
+    # print("number of parameter is", num_parameters)
+    # print(model)
 
-    optimizer = torch.optim.AdamW(
-        params=model.parameters(), lr=args.lr)
+    if args.online_ls:
+        criterion = OnlineLabelSmoothing(
+            alpha=0.5,
+            n_classes=split_num,
+            smoothing=0.1,
+            is_ordinal_regression=args.ordinal_regression,
+        )
+    else:
+        criterion = torch.nn.BCEWithLogitsLoss()  # sigmoid+BCEloss(交差エントロピー)
+
+    optimizer = torch.optim.AdamW(params=model.parameters(), lr=args.lr)
 
     # select device
     if not torch.cuda.is_available():
@@ -222,14 +244,16 @@ def train_bert(args):
     log_valid = []
     for epoch in range(args.epoch):
         model.train()
+        if args.online_ls:
+            criterion.train()
         for data in train_loader:
             # デバイスの指定
-            ids = data['ids'].cuda(args.gpus)
-            mask = data['mask'].cuda(args.gpus)
-            labels = data['labels'].cuda(args.gpus)
+            ids = data["ids"].cuda(args.gpus)
+            mask = data["mask"].cuda(args.gpus)
+            labels = data["labels"].cuda(args.gpus)
             feature = None
             if args.feature:
-                feature = data['feature'].cuda(args.gpus)
+                feature = data["feature"].cuda(args.gpus)
 
             # 勾配をゼロで初期化
             optimizer.zero_grad()
@@ -237,27 +261,53 @@ def train_bert(args):
             # 順伝播 + 誤差逆伝播 + 重み更新
             with autocast(enabled=True):
                 outputs = model.forward(ids, mask, feature)
-                if args.ordinal_regression:  # 順序回帰に変更
-                    labels = torch.rot90(torch.cumsum(
-                        torch.rot90(labels, 2), dim=1), 2)
+                if args.ordinal_regression and not args.online_ls:
+                    labels = torch.rot90(torch.cumsum(torch.rot90(labels, 2), dim=1), 2)
                 loss = criterion(outputs, labels)
 
             scaler.scale(loss).backward()
             scaler.step(optimizer)
             scaler.update()
 
+        if args.online_ls:
+            criterion.next_epoch()
+            criterion.eval()
+
         # 損失と正解率の算出
         loss_train, acc_train = calculate_loss_and_accuracy(
-            model, criterion, train_loader, args.gpus, is_ordinal_regression=args.ordinal_regression, use_feature=args.feature)
+            model,
+            criterion,
+            train_loader,
+            args.gpus,
+            is_ordinal_regression=args.ordinal_regression,
+            use_feature=args.feature,
+            is_online_ls=args.online_ls,
+        )
         loss_valid, acc_valid = calculate_loss_and_accuracy(
-            model, criterion, valid_loader, args.gpus, is_ordinal_regression=args.ordinal_regression, use_feature=args.feature)
+            model,
+            criterion,
+            valid_loader,
+            args.gpus,
+            is_ordinal_regression=args.ordinal_regression,
+            use_feature=args.feature,
+            is_online_ls=args.online_ls,
+        )
         log_train.append([loss_train, acc_train])
         log_valid.append([loss_valid, acc_valid])
 
         # ログを出力
-        print("Epoch [{}], train_loss: {:.4f}, train_acc: {:.4f}, val_loss: {:.4f}, val_acc: {:.4f}".format(
-            epoch + 1, loss_train, acc_train, loss_valid, acc_valid))
+        print(
+            "Epoch [{}], train_loss: {:.4f}, train_acc: {:.4f}, val_loss: {:.4f}, val_acc: {:.4f}".format(
+                epoch + 1, loss_train, acc_train, loss_valid, acc_valid
+            )
+        )
+        if (epoch + 1) % args.save_epoch == 0:
+            torch.save(
+                model.to("cpu").state_dict(), f"{args.model}_checkpoint{epoch + 1}.pt"
+            )
+            model = model.cuda(args.gpus)
 
-    # チェックポイントの保存
-    torch.save(model.to("cpu").state_dict(),  # cpuに回しておかないと他のgpuに回すときに一度元のGPUに積まれてしまう
-               f'{args.model}_checkpoint{epoch + 1}.pt')
+    if not os.path.exists(f"{args.model}_checkpoint{epoch + 1}.pt"):
+        torch.save(
+            model.to("cpu").state_dict(), f"{args.model}_checkpoint{epoch + 1}.pt"
+        )

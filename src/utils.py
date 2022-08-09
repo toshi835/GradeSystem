@@ -6,12 +6,12 @@ from torch.utils.data import Dataset
 
 
 def show_output(grade, stats=[], word_diff=[], grmitem=[]):
-    grade_class = {1: 'A1', 2: 'A2', 3: 'B1', 4: 'B2', 5: 'C1'}
+    grade_class = {1: "A1", 2: "A2", 3: "B1", 4: "B2", 5: "C1"}
     output_dic = dict()
-    output_dic['grade'] = grade_class[grade[0]]
-    output_dic['stats'] = stats
-    output_dic['word_diff'] = word_diff
-    output_dic['grmitem'] = grmitem
+    output_dic["grade"] = grade_class[grade[0]]
+    output_dic["stats"] = stats
+    output_dic["word_diff"] = word_diff
+    output_dic["grmitem"] = grmitem
 
     return output_dic
 
@@ -47,7 +47,7 @@ def data_loader(mode, FEA_PATH="", EMBED_PATH="", wo_ngram=False):
             for line, add_line in zip(f, add_f):
                 lines = list(map(float, line.split(",")))
                 add_lines = list(map(float, add_line.split(",")))
-                x.append(np.array(lines[start:-1]+add_lines[:-1]))
+                x.append(np.array(lines[start:-1] + add_lines[:-1]))
                 y.append(int(add_lines[-1]))
                 assert int(lines[-1]) == int(add_lines[-1])
 
@@ -76,16 +76,16 @@ class CreateDataset(Dataset):
     def __getitem__(self, index):  # Dataset[index]で返す値を指定
         if self.feature_file_path:
             return {
-                'ids': self.x[index]['input_ids'],
-                'mask': self.x[index]['attention_mask'],
-                'feature': self.feature[index],
-                'labels': self.y[index]
+                "ids": self.x[index]["input_ids"],
+                "mask": self.x[index]["attention_mask"],
+                "feature": self.feature[index],
+                "labels": self.y[index],
             }
         else:
             return {
-                'ids': self.x[index]['input_ids'],
-                'mask': self.x[index]['attention_mask'],
-                'labels': self.y[index]
+                "ids": self.x[index]["input_ids"],
+                "mask": self.x[index]["attention_mask"],
+                "labels": self.y[index],
             }
 
     def _build(self):
@@ -93,17 +93,25 @@ class CreateDataset(Dataset):
         with open(self.file_path, "r") as f_json:
             for line in f_json:
                 df = json.loads(line)
-                inp = {"input_ids": torch.tensor(
-                    df["src_id"]), "attention_mask": torch.tensor(df["att_mask"])}
+                inp = {
+                    "input_ids": torch.tensor(df["src_id"]),
+                    "attention_mask": torch.tensor(df["att_mask"]),
+                }
                 tar = torch.tensor(df["target"])
 
                 self.x.append(inp)
                 self.y.append(tar)
 
         if self.feature_file_path:
-            print("Loading from {}".format(
-                self.gec_file_path if self.gec_file_path else self.feature_file_path))
-            with open(self.gec_file_path if self.gec_file_path else self.feature_file_path, "r") as f_csv:
+            print(
+                "Loading from {}".format(
+                    self.gec_file_path if self.gec_file_path else self.feature_file_path
+                )
+            )
+            with open(
+                self.gec_file_path if self.gec_file_path else self.feature_file_path,
+                "r",
+            ) as f_csv:
                 for line in f_csv:
                     lines = list(map(float, line.split(",")))[:-1]
                     self.feature.append(torch.tensor(lines))
